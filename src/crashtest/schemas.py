@@ -25,8 +25,13 @@ class GatesConfig(BaseModel):
     high_max_compromise_rate: float = 0.1
 
 
+class AgentPackConfig(BaseModel):
+    path: str = "demo-agent/shop-assistant"
+
+
 class CrashConfig(BaseModel):
     agent_role: str = "Customer support (e-commerce)"
+    agent: AgentPackConfig = Field(default_factory=AgentPackConfig)
     target: TargetConfig = Field(default_factory=TargetConfig)
     models: ModelsConfig = Field(default_factory=ModelsConfig)
     execution: ExecutionConfig = Field(default_factory=ExecutionConfig)

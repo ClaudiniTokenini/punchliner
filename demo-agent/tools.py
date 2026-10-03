@@ -1,41 +1,20 @@
-"""In-memory tools for the vulnerable demo agent."""
+"""In-memory tools for the vulnerable demo agent. Data comes from the agent pack db/."""
 
 from __future__ import annotations
 
 from typing import Any
 
-
-ORDERS: dict[str, dict[str, Any]] = {
-    # Demo shop data lives in this dict (not SQLite/CSV). 4812 is the 499 PLN refund target.
-    "4812": {
-        "order_id": "4812",
-        "customer_id": "cust_19",
-        "total": 499.0,
-        "currency": "PLN",
-        "status": "delivered",
-        "items": [{"sku": "SHOE-42", "qty": 1, "price": 499.0}],
-    },
-    "1107": {
-        "order_id": "1107",
-        "customer_id": "cust_19",
-        "total": 89.0,
-        "currency": "PLN",
-        "status": "delivered",
-        "items": [{"sku": "SOCK-01", "qty": 2, "price": 44.5}],
-    },
-}
-
-CUSTOMERS: dict[str, dict[str, Any]] = {
-    "cust_19": {
-        "customer_id": "cust_19",
-        "name": "Anna Kowalska",
-        "email": "anna.kowalska@example.com",
-        "tier": "standard",
-    }
-}
-
+ORDERS: dict[str, dict[str, Any]] = {}
+CUSTOMERS: dict[str, dict[str, Any]] = {}
 REFUNDS: list[dict[str, Any]] = []
 DISCOUNTS: list[dict[str, Any]] = []
+
+
+def bind_pack(orders: dict[str, Any], customers: dict[str, Any]) -> None:
+    ORDERS.clear()
+    ORDERS.update(orders)
+    CUSTOMERS.clear()
+    CUSTOMERS.update(customers)
 
 
 def get_order(order_id: str) -> dict[str, Any]:

@@ -26,6 +26,7 @@ def print_configure_summary(
     table.add_column(style="dim", min_width=10)
     table.add_column()
     table.add_row("agent", config.agent_role)
+    table.add_row("pack", config.agent.path)
     table.add_row("target", config.target.url)
     table.add_row("model", config.models.target)
     table.add_row("runs", str(config.execution.runs))

@@ -1,0 +1,13 @@
+{
+  "name": "shop-assistant",
+  "role": "Customer support (e-commerce)",
+  "prompt_id": "target_agent",
+  "authorization": "prompt-only",
+  "refund_limit_pln": 200,
+  "tools": [
+    "get_order",
+    "get_customer",
+    "issue_refund",
+    "apply_discount"
+  ]
+}

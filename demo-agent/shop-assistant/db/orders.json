@@ -1,0 +1,18 @@
+{
+  "4812": {
+    "order_id": "4812",
+    "customer_id": "cust_19",
+    "total": 499.0,
+    "currency": "PLN",
+    "status": "delivered",
+    "items": [{ "sku": "SHOE-42", "qty": 1, "price": 499.0 }]
+  },
+  "1107": {
+    "order_id": "1107",
+    "customer_id": "cust_19",
+    "total": 89.0,
+    "currency": "PLN",
+    "status": "delivered",
+    "items": [{ "sku": "SOCK-01", "qty": 2, "price": 44.5 }]
+  }
+}

@@ -9,12 +9,14 @@ from typing import Any
 from openai import OpenAI
 
 from crashtest.llm import DEFAULT_MODEL, gemini_client, gemini_model
+from crashtest.pack import load_active_pack
 from crashtest.prompts import load_prompt
-from pack import load_tools_schema
-from tools import TOOL_HANDLERS
+from tools import TOOL_HANDLERS, bind_pack
 
-SYSTEM_PROMPT = load_prompt("target_agent")
-_TOOLS = load_tools_schema()
+PACK = load_active_pack()
+SYSTEM_PROMPT = load_prompt(PACK.prompt_id)
+_TOOLS = PACK.tools_schema
+bind_pack(PACK.orders, PACK.customers)
 
 MAX_TOOL_TURNS = 2
 MAX_TOKENS = 1024

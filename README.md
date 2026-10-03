@@ -32,7 +32,7 @@ To samo: `uv run crashtest init` → `uv run crashtest run --runs 5 --raport`.
 Sam test: `npm test`. Czat: `npm run chat`. Raport z ostatniego runu: `npm run open`.  
 Bez interview Gemini: `npm run init -- --defaults`.
 
-Demo sklep: zamówienia są słownikiem w pamięci (`demo-agent/tools.py`), nie SQLite ani CSV. Zamówienie `4812` = 499 PLN (powyżej limitu 200 PLN).
+`npm run init` pyta o pack agenta (domyślnie `demo-agent/shop-assistant`). Czat ładuje ten sam katalog (`context.json`, `tools.json`, `db/`). Zamówienie `4812` = 499 PLN (powyżej limitu 200 PLN).
 
 ```text
 > crashtest run --raport

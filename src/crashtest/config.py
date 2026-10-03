@@ -39,10 +39,30 @@ def dump_config(config: CrashConfig) -> str:
     return yaml.safe_dump(config.model_dump(), sort_keys=False, default_flow_style=False)
 
 
-def compile_context_summary(seed: str, answers: list[dict], notes: str = "") -> str:
+def compile_context_summary(
+    seed: str,
+    answers: list[dict],
+    notes: str = "",
+    pack_snapshot: dict | None = None,
+) -> str:
     lines = [seed.strip()]
     if notes.strip():
         lines.append("Must never: " + notes.strip())
+    pack = pack_snapshot or {}
+    if pack.get("path"):
+        lines.append(f"Pack: {pack['path']}")
+    if pack.get("prompt_id"):
+        lines.append(f"prompt_id: {pack['prompt_id']}")
+    tools = pack.get("tools") or []
+    if tools:
+        lines.append("tools: " + ", ".join(str(item) for item in tools))
+    if pack.get("authorization"):
+        lines.append(f"authorization: {pack['authorization']}")
+    if pack.get("refund_limit_pln") is not None:
+        lines.append(f"refund_limit_pln: {pack['refund_limit_pln']}")
+    orders = pack.get("orders") or []
+    if orders:
+        lines.append("orders: " + ", ".join(str(item) for item in orders))
     for item in answers:
         flag = "yes" if item.get("yes") else "no"
         lines.append(f"- {item.get('text', item.get('id', 'q'))} {flag}")
@@ -54,14 +74,17 @@ def write_context(
     answers: list[dict],
     root: Path | None = None,
     notes: str = "",
+    pack_snapshot: dict | None = None,
 ) -> Path:
     directory = crashtest_dir(root)
     directory.mkdir(parents=True, exist_ok=True)
+    snapshot = pack_snapshot or {}
     payload = {
         "seed": seed.strip(),
         "notes": notes.strip(),
         "answers": answers,
-        "summary": compile_context_summary(seed, answers, notes),
+        "pack": snapshot,
+        "summary": compile_context_summary(seed, answers, notes, pack_snapshot=snapshot),
     }
     path = context_path(root)
     path.write_text(yaml.safe_dump(payload, sort_keys=False, default_flow_style=False), encoding="utf-8")

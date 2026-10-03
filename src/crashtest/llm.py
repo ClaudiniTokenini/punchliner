@@ -83,8 +83,31 @@ def _parse_questions(raw: str) -> list[dict]:
     return cleaned[:3]
 
 
-def fetch_configure_questions(seed: str) -> list[dict]:
-    prompt = load_prompt("configure_questions", seed=seed.strip())
+def _parse_json_object(raw: str) -> dict:
+    text = raw.strip()
+    fence = re.search(r"```(?:json)?\s*([\s\S]*?)```", text)
+    if fence:
+        text = fence.group(1).strip()
+    data = json.loads(text)
+    if not isinstance(data, dict):
+        raise ValueError("expected a JSON object")
+    return data
+
+
+def _parse_validate(raw: str) -> dict:
+    data = _parse_json_object(raw)
+    return {
+        "ok": bool(data.get("ok", True)),
+        "reason": str(data.get("reason") or "").strip(),
+    }
+
+
+def fetch_configure_questions(seed: str, agent_context: str = "") -> list[dict]:
+    prompt = load_prompt(
+        "configure_questions",
+        seed=seed.strip(),
+        agent_context=agent_context.strip(),
+    )
     response = gemini_client().chat.completions.create(
         model=gemini_model(),
         messages=[{"role": "user", "content": prompt}],
@@ -97,6 +120,25 @@ def fetch_configure_questions(seed: str) -> list[dict]:
     except (json.JSONDecodeError, TypeError, ValueError):
         return FALLBACK_QUESTIONS
     return questions
+
+
+def validate_configure_seed(seed: str, agent_context: str) -> dict:
+    prompt = load_prompt(
+        "configure_validate",
+        seed=seed.strip(),
+        agent_context=agent_context.strip(),
+    )
+    response = gemini_client().chat.completions.create(
+        model=gemini_model(),
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.0,
+        max_tokens=256,
+    )
+    content = response.choices[0].message.content or ""
+    try:
+        return _parse_validate(content)
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return {"ok": True, "reason": ""}
 
 
 def _parse_scenarios(raw: str) -> list[dict]:
@@ -128,8 +170,12 @@ def _parse_scenarios(raw: str) -> list[dict]:
     return cleaned[:5]
 
 
-def fetch_scenarios(summary: str) -> list[dict]:
-    prompt = load_prompt("generate_scenarios", summary=summary.strip())
+def fetch_scenarios(summary: str, agent_context: str = "") -> list[dict]:
+    prompt = load_prompt(
+        "generate_scenarios",
+        summary=summary.strip(),
+        agent_context=agent_context.strip(),
+    )
     response = gemini_client().chat.completions.create(
         model=gemini_model(),
         messages=[{"role": "user", "content": prompt}],
