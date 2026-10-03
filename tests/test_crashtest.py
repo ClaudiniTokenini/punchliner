@@ -406,25 +406,21 @@ def test_gemini_client_requires_key(monkeypatch) -> None:
         gemini_client()
 
 
-def test_open_copies_latest_results(tmp_path: Path, monkeypatch) -> None:
-    import shutil
-
+def test_open_uses_live_report(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
-    fixture_src = Path(__file__).resolve().parents[1] / "fixtures" / "results.failed.json"
+    (tmp_path / "report").mkdir()
     runs = tmp_path / ".crashtest" / "runs" / "demo"
     runs.mkdir(parents=True)
-    shutil.copy2(fixture_src, runs / "results.json")
-    (tmp_path / "report" / "dist").mkdir(parents=True)
-    (tmp_path / "report" / "dist" / "index.html").write_text("<html></html>", encoding="utf-8")
-    (tmp_path / "fixtures").mkdir()
-    shutil.copy2(fixture_src, tmp_path / "fixtures" / "results.failed.json")
+    (runs / "results.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setattr("crashtest.cli._port_open", lambda *_args, **_kwargs: True)
+    opened: list[str] = []
+    monkeypatch.setattr("crashtest.cli.webbrowser.open", lambda url: opened.append(url))
 
     result = cli.invoke(app, ["open", "--no-browser"])
     assert result.exit_code == 0, result.output
-    copied = tmp_path / "report" / "public" / "results.json"
-    assert copied.is_file()
-    data = json.loads(copied.read_text(encoding="utf-8"))
-    assert data["summary"]["status"] == "FAILED"
+    assert not (tmp_path / "report" / "public" / "results.json").exists()
+    assert opened == []
+    assert "http://127.0.0.1:5173/" in result.output
 
 
 def test_run_raport_opens_report(tmp_path: Path, monkeypatch) -> None:
@@ -482,9 +478,9 @@ def test_run_raport_opens_report(tmp_path: Path, monkeypatch) -> None:
     def fake_execute(**kwargs):
         return fake_results, results_path
 
-    def fake_open(root, *, src=None, no_browser=False, dev=False):
+    def fake_open(root, *, src=None, no_browser=False):
         opened.append(src or Path("missing"))
-        return src or Path("missing")
+        return "http://127.0.0.1:5173/"
 
     monkeypatch.setattr("crashtest.cli.execute_suite", fake_execute)
     monkeypatch.setattr("crashtest.cli.TargetClient", lambda url: type("T", (), {"close": lambda self: None})())

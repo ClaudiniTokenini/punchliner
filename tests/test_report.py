@@ -1,51 +1,56 @@
-"""Standalone reports must not retain an earlier run's embedded artifact."""
+"""Live report open must not rebuild a frozen HTML artifact."""
 
-import os
 from pathlib import Path
 
 from crashtest.cli import _open_report
 
 
-def report_workspace(root: Path) -> tuple[Path, Path]:
-    source = root / "results.json"
-    source.write_text('{"run": 1}', encoding="utf-8")
-    os.utime(source, (1, 1))
-    dist = root / "report" / "dist"
-    dist.mkdir(parents=True)
-    (dist / "results.json").write_text(source.read_text(), encoding="utf-8")
-    index = dist / "index.html"
-    index.write_text("<html></html>", encoding="utf-8")
-    os.utime(index, (10, 10))
-    return source, index
+def test_open_does_not_build_when_server_is_up(tmp_path: Path, monkeypatch) -> None:
+    (tmp_path / "report").mkdir()
+    src = tmp_path / ".crashtest" / "runs" / "20261003-120000" / "results.json"
+    src.parent.mkdir(parents=True)
+    src.write_text("{}", encoding="utf-8")
+    calls: list[object] = []
+    monkeypatch.setattr("crashtest.cli._port_open", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(
+        "crashtest.cli.subprocess.Popen",
+        lambda *args, **kwargs: calls.append((args, kwargs)),
+    )
+    monkeypatch.setattr("crashtest.cli.webbrowser.open", lambda *_args, **_kwargs: None)
+
+    url = _open_report(tmp_path, src=src, no_browser=True)
+
+    assert calls == []
+    assert url == "http://127.0.0.1:5173/?run=20261003-120000"
 
 
-def test_unchanged_report_does_not_rebuild(tmp_path: Path, monkeypatch) -> None:
-    source, _ = report_workspace(tmp_path)
-    calls = []
-    monkeypatch.setattr("crashtest.cli.subprocess.check_call", lambda *args, **kwargs: calls.append(args))
-    _open_report(tmp_path, src=source, no_browser=True)
-    assert not calls
+def test_open_starts_vite_when_port_is_free(tmp_path: Path, monkeypatch) -> None:
+    (tmp_path / "report").mkdir()
+    started: list[tuple[list[str], Path]] = []
 
+    class Proc:
+        def poll(self) -> None:
+            return None
 
-def test_report_rebuilds_when_source_changes(tmp_path: Path, monkeypatch) -> None:
-    source, _ = report_workspace(tmp_path)
-    app = tmp_path / "report" / "src" / "App.tsx"
-    app.parent.mkdir()
-    app.write_text("export default function App() {}", encoding="utf-8")
-    calls = []
-    monkeypatch.setattr("crashtest.cli.shutil.which", lambda _: "/usr/bin/npm")
-    monkeypatch.setattr("crashtest.cli.subprocess.check_call", lambda *args, **kwargs: calls.append(args))
-    _open_report(tmp_path, src=source, no_browser=True)
-    assert calls == [(["/usr/bin/npm", "run", "build"],)]
+        def wait(self, timeout: float | None = None) -> int:
+            return 0
 
+        def terminate(self) -> None:
+            return None
 
-def test_report_rebuilds_for_different_artifact_even_with_older_timestamp(tmp_path: Path, monkeypatch) -> None:
-    source, _ = report_workspace(tmp_path)
-    source.write_text('{"run": 2}', encoding="utf-8")
-    os.utime(source, (1, 1))
-    calls = []
-    monkeypatch.setattr("crashtest.cli.shutil.which", lambda _: "/usr/bin/npm")
-    monkeypatch.setattr("crashtest.cli.subprocess.check_call", lambda *args, **kwargs: calls.append(args))
-    _open_report(tmp_path, src=source, no_browser=True)
-    assert calls == [(["/usr/bin/npm", "run", "build"],)]
-    assert (tmp_path / "report" / "dist" / "results.json").read_text() == '{"run": 2}'
+    def fake_popen(args: list[str], **kwargs: object) -> Proc:
+        started.append((args, kwargs["cwd"]))
+        return Proc()
+
+    monkeypatch.setattr("crashtest.cli._port_open", lambda *_args, **_kwargs: False)
+    monkeypatch.setattr("crashtest.cli.shutil.which", lambda _name: "/usr/bin/npm")
+    monkeypatch.setattr("crashtest.cli.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("crashtest.cli._wait_for_report", lambda _proc: None)
+    held: list[Proc] = []
+    monkeypatch.setattr("crashtest.cli._hold_server", lambda proc: held.append(proc))
+
+    url = _open_report(tmp_path, no_browser=True)
+
+    assert started == [(["/usr/bin/npm", "run", "dev"], tmp_path / "report")]
+    assert held
+    assert url == "http://127.0.0.1:5173/"

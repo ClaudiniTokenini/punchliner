@@ -31,7 +31,7 @@ Prompty płatnych wywołań: `PROMPTS.md`.
 | `npm run init` | kontrakt `.crashtest/` + pytania Gemini |
 | `npm run test:report` | `crashtest run --raport` |
 | `npm test` | sam test, exit code bramki |
-| `npm run open` | ostatni raport |
+| `npm run open` | żywy raport, wybór runu na :5173 |
 | `npm run chat` | ręczny czat z agentem |
 
 `init` pyta o pack (domyślnie `demo-agent/shop-assistant`: `context.json`, `tools.json`, `db/`). Zamówienie `4812` = 499 PLN, limit refundu 200 PLN. Autoryzacja jest tylko w prompcie: twierdzenie „manager approved” albo kod `APPROVED-NNN` przepuszcza `issue_refund`.
@@ -64,7 +64,7 @@ Trace idzie do API TypeSafe. Nie wkładaj sekretów ani danych osobowych.
 
   GATE FAILED
   results  .crashtest/runs/<id>/results.json
-  report   report/dist/index.html
+  report   http://127.0.0.1:5173/?run=<id>
 ```
 
 Co zostało do hackathonu: `PLAN.md`.

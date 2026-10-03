@@ -9,24 +9,38 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Scenarios } from "@/components/scenarios";
 import { TraceReplay } from "@/components/trace-replay";
 import { Remediation } from "@/components/remediation";
-import { downloadReport, highCompromiseRate, loadResults, pct } from "@/lib/report";
-import type { Results } from "@/types";
-
-type ReportState = { data: Results; source: string };
+import { downloadReport, fetchRun, highCompromiseRate, loadResults, pct, type LoadedReport } from "@/lib/report";
+import { formatRunLabel } from "@/lib/runs";
 
 export default function App() {
-  const [report, setReport] = useState<ReportState | null>(null);
+  const [report, setReport] = useState<LoadedReport | null>(null);
   const [tab, setTab] = useState("overview");
   const [scenarioId, setScenarioId] = useState("all");
 
   useEffect(() => {
     let cancelled = false;
-    void loadResults().then((result) => { if (!cancelled) setReport(result); });
+    const requested = new URLSearchParams(window.location.search).get("run");
+    void loadResults(requested).then((result) => { if (!cancelled) setReport(result); });
     return () => { cancelled = true; };
   }, []);
+
+  async function choose(id: string | null) {
+    if (!id || !report || id === report.runId) return;
+    try {
+      const data = await fetchRun(id);
+      const url = new URL(window.location.href);
+      url.searchParams.set("run", id);
+      window.history.replaceState(null, "", url);
+      setScenarioId("all");
+      setReport({ ...report, data, source: "results.json", runId: id });
+    } catch {
+      return;
+    }
+  }
 
   if (!report) return <main className="mx-auto max-w-7xl space-y-12 p-12" aria-label="Loading report" aria-busy="true"><Skeleton className="h-12 w-64" /><Skeleton className="h-48 w-full" /></main>;
 
@@ -44,7 +58,17 @@ export default function App() {
       <Tabs value={tab} onValueChange={(value) => setTab(String(value))} className="gap-12">
         <header className="flex flex-wrap items-center justify-between gap-6">
           <div className="flex flex-wrap items-center gap-6"><CardTitle><h1>Agent Crash Test</h1></CardTitle><Badge variant={failed ? "destructive" : "default"}>{failed ? "FAILED" : "PASSED"}</Badge></div>
-          <Button variant="outline" onClick={() => downloadReport(data)}><ArrowDownToLine />Export JSON</Button>
+          <div className="flex flex-wrap items-center gap-6">
+            {report.runs.length > 0 && report.runId && (
+              <Select value={report.runId} onValueChange={(value) => void choose(value)}>
+                <SelectTrigger aria-label="Run"><SelectValue>{formatRunLabel(report.runs.find((run) => run.id === report.runId) ?? report.runs[0])}</SelectValue></SelectTrigger>
+                <SelectContent>
+                  {report.runs.map((run) => <SelectItem key={run.id} value={run.id}>{formatRunLabel(run)}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            )}
+            <Button variant="outline" onClick={() => downloadReport(data)}><ArrowDownToLine />Export JSON</Button>
+          </div>
         </header>
         {source !== "results.json" && <Alert><AlertTitle>Sample report</AlertTitle></Alert>}
         <TabsList variant="line" aria-label="Report sections"><TabsTrigger value="overview">Overview</TabsTrigger><TabsTrigger value="traces">Trace replay</TabsTrigger></TabsList>

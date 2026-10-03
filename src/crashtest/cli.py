@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import shutil
+import socket
 import subprocess
 import sys
+import time
 import webbrowser
 from pathlib import Path
+from urllib.parse import quote
 
 import typer
 from rich.prompt import Confirm, FloatPrompt, IntPrompt, Prompt
@@ -336,18 +339,68 @@ def _chat_turn(
     history.append({"role": "assistant", "content": payload.get("content") or ""})
 
 
-def _latest_results(root: Path) -> Path:
-    runs = root / ".crashtest" / "runs"
-    if runs.is_dir():
-        candidates = sorted(runs.glob("*/results.json"), key=lambda p: p.stat().st_mtime)
-        if candidates:
-            return candidates[-1]
-    fixture = root / "fixtures" / "results.failed.json"
-    if fixture.is_file():
-        return fixture
-    raise FileNotFoundError(
-        "No results.json found.\n  Next: npm test   (or keep fixtures/results.failed.json)"
+REPORT_HOST = "127.0.0.1"
+REPORT_PORT = 5173
+
+
+def _port_open(host: str, port: int) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.settimeout(0.2)
+        return sock.connect_ex((host, port)) == 0
+
+
+def _run_id_from_results(root: Path, src: Path | None) -> str | None:
+    if src is None:
+        return None
+    try:
+        runs = (root / ".crashtest" / "runs").resolve()
+        path = src.resolve()
+    except OSError:
+        return None
+    if path.name != "results.json" or path.parent.parent != runs:
+        return None
+    return path.parent.name
+
+
+def _report_url(run_id: str | None) -> str:
+    base = f"http://{REPORT_HOST}:{REPORT_PORT}/"
+    if not run_id:
+        return base
+    return f"{base}?run={quote(run_id)}"
+
+
+def _start_report_server(report: Path) -> subprocess.Popen[bytes]:
+    npm = shutil.which("npm")
+    if not npm:
+        raise RuntimeError("npm not found. Install Node, then run: cd report && npm install")
+    return subprocess.Popen(
+        [npm, "run", "dev"],
+        cwd=report,
+        shell=sys.platform == "win32",
     )
+
+
+def _wait_for_report(proc: subprocess.Popen[bytes], timeout: float = 30.0) -> None:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if proc.poll() is not None:
+            raise RuntimeError("Report server exited before it was ready.")
+        if _port_open(REPORT_HOST, REPORT_PORT):
+            return
+        time.sleep(0.2)
+    proc.terminate()
+    raise RuntimeError(f"Report server did not start on port {REPORT_PORT}.")
+
+
+def _hold_server(proc: subprocess.Popen[bytes]) -> None:
+    try:
+        proc.wait()
+    except KeyboardInterrupt:
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
 
 
 def _open_report(
@@ -355,57 +408,24 @@ def _open_report(
     *,
     src: Path | None = None,
     no_browser: bool = False,
-    dev: bool = False,
-) -> Path:
+) -> str:
+    """Open the live report. Start Vite when nothing is listening on :5173."""
     report = root / "report"
     if not report.is_dir():
         raise FileNotFoundError("Missing report/ folder.")
 
-    src = src or _latest_results(root)
-    public = report / "public"
-    public.mkdir(parents=True, exist_ok=True)
-    dest = public / "results.json"
-    shutil.copy2(src, dest)
+    url = _report_url(_run_id_from_results(root, src))
+    started = None
+    if not _port_open(REPORT_HOST, REPORT_PORT):
+        started = _start_report_server(report)
+        _wait_for_report(started)
 
-    dist = report / "dist"
-    index = dist / "index.html"
-    # The standalone HTML embeds the artifact, so rebuild stale reports too.
-    built_results = dist / "results.json"
-    inputs = [dest, report / "index.html", report / "package.json", report / "vite.config.ts"]
-    inputs.extend((report / "src").rglob("*"))
-    inputs.extend((root / "fixtures").glob("*.json"))
-    results_changed = built_results.is_file() and built_results.read_bytes() != dest.read_bytes()
-    stale = index.exists() and any(
-        path.is_file() and path.stat().st_mtime > index.stat().st_mtime for path in inputs
-    )
-    if not dev and (not index.exists() or stale or results_changed):
-        npm = shutil.which("npm")
-        if not npm:
-            raise RuntimeError("npm not found. Install Node or run: cd report && npm run build")
-        subprocess.check_call(
-            [npm, "run", "build"],
-            cwd=report,
-            shell=sys.platform == "win32",
-        )
-
-    if dist.is_dir():
-        shutil.copy2(dest, dist / "results.json")
-
-    ui.console.print(f"  results  {src}")
-    ui.console.print(f"  copied   {dest}")
-
-    if dev:
-        url = "http://127.0.0.1:5173/"
-        ui.console.print(f"  Next: cd report && npm run dev  →  {url}")
-        if not no_browser:
-            webbrowser.open(url)
-        return dest
-
-    html = index.resolve().as_uri()
-    ui.console.print(f"  report   {index}")
+    ui.console.print(f"  report   {url}")
     if not no_browser:
-        webbrowser.open(html)
-    return dest
+        webbrowser.open(url)
+    if started is not None:
+        _hold_server(started)
+    return url
 
 
 @app.command("open")
@@ -413,17 +433,12 @@ def open_command(
     no_browser: bool = typer.Option(
         False,
         "--no-browser",
-        help="Copy results into the report folder without opening a browser.",
-    ),
-    dev: bool = typer.Option(
-        False,
-        "--dev",
-        help="Point at the Vite dev server instead of dist/index.html.",
+        help="Start the report server without opening a browser.",
     ),
 ) -> None:
-    """Open the HTML report for the latest .crashtest run (fixture fallback)."""
+    """Open the live report and pick a run from .crashtest/runs."""
     try:
-        _open_report(_root(), no_browser=no_browser, dev=dev)
+        _open_report(_root(), no_browser=no_browser)
     except (FileNotFoundError, RuntimeError) as exc:
         ui.print_error(str(exc))
         raise typer.Exit(code=1) from None
