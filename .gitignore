@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+node_modules/
+dist/
+.DS_Store
+*.local
+.crashtest/runs/
+.crashtest/artifacts/
