@@ -21,7 +21,7 @@ export function CloseButton() {
   return <span aria-hidden="true" className="inline-flex size-5 items-center justify-center bg-muted text-xs leading-none text-foreground">x</span>;
 }
 
-/** Dashed "underscore" bar used as a section separator. */
+/** Solid 1px line used as a section separator. */
 export function DashBar({ className }: { className?: string }) {
   return <div aria-hidden="true" className={cn("dash-bar", className)} />;
 }

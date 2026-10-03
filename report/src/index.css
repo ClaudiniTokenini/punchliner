@@ -3,23 +3,23 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/jetbrains-mono";
 
-/* Terminal palette from the mockup: #080809 canvas, #2A2B2E chrome, white / light-gray text, red criticals. */
+/* Terminal palette: #080809 canvas, #2A2B2E chrome, #e3e2e2 text and light accents, red criticals. */
 :root {
     --background: #080809;
-    --foreground: #ffffff;
+    --foreground: #e3e2e2;
     --card: #080809;
-    --card-foreground: #ffffff;
+    --card-foreground: #e3e2e2;
     --popover: #141416;
-    --popover-foreground: #ffffff;
-    --primary: #ffffff;
+    --popover-foreground: #e3e2e2;
+    --primary: #e3e2e2;
     --primary-foreground: #080809;
     --secondary: #2a2b2e;
-    --secondary-foreground: #ffffff;
+    --secondary-foreground: #e3e2e2;
     --muted: #2a2b2e;
     --muted-foreground: #a3a4aa;
     --accent: #2a2b2e;
-    --accent-foreground: #ffffff;
-    --destructive: #ff3b3b;
+    --accent-foreground: #e3e2e2;
+    --destructive: #E15665;
     --border: #2a2b2e;
     --input: #2a2b2e;
     --ring: #6b6c72;
@@ -70,10 +70,8 @@
 }
 
 @utility dash-bar {
-  /* Decorative "underscore" bar: 44px dash + 16px gap tiles, spaced evenly so no dash is clipped at the edge. */
-  height: 3px;
+  /* Solid section separator matching the window borders. */
+  height: 1px;
   width: 100%;
-  background-image: linear-gradient(to right, var(--foreground) 44px, transparent 44px);
-  background-size: 60px 100%;
-  background-repeat: space;
+  background-color: var(--border);
 }
