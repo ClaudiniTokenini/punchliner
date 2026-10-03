@@ -28,7 +28,7 @@ export function Scenarios({ scenarios, searchable = false, onReplay }: {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-6">
-        <h2 className="text-3xl font-bold">Scenarios</h2>
+        <h2 className="text-3xl font-bold">Punches</h2>
         {searchable && (
           <div className="flex flex-wrap items-center gap-3 text-xs">
             <div className="relative w-56 before:absolute before:top-1/2 before:left-2 before:-translate-y-1/2 before:text-muted-foreground before:content-['>']">

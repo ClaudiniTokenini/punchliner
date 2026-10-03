@@ -12,6 +12,7 @@
     "test": "uv run crashtest run",
     "test:report": "uv run crashtest run --raport",
     "test:report:ci": "uv run crashtest run --raport --no-browser",
+    "test:agent-audit": "uv run python scripts/run_shop_audit.py",
     "open": "uv run crashtest open",
     "report": "npm --prefix report run dev"
   }

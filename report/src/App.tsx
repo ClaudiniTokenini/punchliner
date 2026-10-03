@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowDownToLine, Check, X } from "lucide-react";
+import { ArrowDownToLine, Check, HandFist, X } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -54,8 +54,7 @@ export default function App() {
       <Tabs value={tab} onValueChange={(value) => setTab(String(value))} className="gap-0">
         <header className="mb-6 flex flex-wrap items-center justify-between gap-6">
           <div className="flex flex-wrap items-center gap-4">
-            <h1 className="text-2xl font-bold">Agent Crash Test</h1>
-            <span aria-hidden="true" className="h-px w-12 bg-muted-foreground" />
+            <h1 className="inline-flex items-center gap-3 text-2xl font-bold"><HandFist aria-hidden="true" className="size-6 shrink-0" />Punchliner</h1>
             <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-[0.625rem] font-bold tracking-widest uppercase ${failed ? "bg-destructive text-background" : "bg-foreground text-background"}`}>
               {failed ? <X className="size-3" /> : <Check className="size-3" />}{failed ? "FAILED" : "PASSED"}
             </span>
@@ -74,8 +73,8 @@ export default function App() {
           </div>
         </header>
 
-        <div className="flex items-end justify-between px-2">
-          <TabsList aria-label="Report sections" className="h-auto gap-1 bg-transparent p-0">
+        <div className="flex items-end justify-between">
+          <TabsList aria-label="Report sections" className="h-9 items-end gap-1 bg-transparent p-0 group-data-horizontal/tabs:h-9">
             <TabsTrigger value="overview" className="h-9 border-border px-5 text-[0.75rem] normal-case tracking-normal data-active:bg-muted data-active:text-foreground">Overview</TabsTrigger>
             <TabsTrigger value="traces" className="h-9 border-border px-5 text-[0.75rem] normal-case tracking-normal data-active:bg-muted data-active:text-foreground">
               Trace replay<span aria-hidden="true" className="bg-foreground/10 px-1.5 text-[0.625rem] text-muted-foreground">{data.scenarios.length}</span>

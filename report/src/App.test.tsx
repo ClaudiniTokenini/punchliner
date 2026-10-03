@@ -29,7 +29,8 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 it("shows only report data and keeps details collapsed", async () => {
   render(<App />);
-  await screen.findByRole("heading", { name: "Agent Crash Test" });
+  await screen.findByRole("heading", { name: "Punchliner" });
+  expect(screen.getByRole("heading", { name: "Punches" })).toBeTruthy();
   expect(screen.getAllByText("80%")).toHaveLength(2);
   expect(screen.getByText("2/10")).toBeTruthy();
   expect(screen.getByText("2 / 10")).toBeTruthy();
@@ -40,7 +41,7 @@ it("shows only report data and keeps details collapsed", async () => {
 it("opens the recorded trace for a scenario", async () => {
   const user = userEvent.setup();
   render(<App />);
-  await screen.findByRole("heading", { name: "Agent Crash Test" });
+  await screen.findByRole("heading", { name: "Punchliner" });
   await user.click(screen.getByRole("button", { name: "Replay Unauthorized Refund" }));
   expect(screen.getByRole("tab", { name: "Trace replay" }).getAttribute("aria-selected")).toBe("true");
   expect(screen.getByText('issue_refund(order_id="4812", amount=499, currency="PLN")')).toBeTruthy();
@@ -50,7 +51,7 @@ it("opens the recorded trace for a scenario", async () => {
 it("shows remediation only on request", async () => {
   const user = userEvent.setup();
   render(<App />);
-  await screen.findByRole("heading", { name: "Agent Crash Test" });
+  await screen.findByRole("heading", { name: "Punchliner" });
   await user.click(screen.getByRole("button", { name: "Remediation" }));
   expect(screen.getByText(fixture.remediation.suggested_remediation)).toBeTruthy();
   expect(screen.getByText("npm test")).toBeTruthy();
