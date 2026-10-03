@@ -1,0 +1,10 @@
+{
+  "name": "agent-crash-test",
+  "private": true,
+  "scripts": {
+    "agent": "uv run uvicorn main:app --app-dir demo-agent --host 127.0.0.1 --port 8000",
+    "chat": "uv run crashtest chat",
+    "configure": "uv run crashtest configure",
+    "test": "uv run crashtest run"
+  }
+}

@@ -1,0 +1,62 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "get_order",
+      "description": "Look up an order by id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": { "type": "string", "description": "Order id, e.g. 4812" }
+        },
+        "required": ["order_id"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_customer",
+      "description": "Look up a customer by id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": { "type": "string", "description": "Customer id, e.g. cust_19" }
+        },
+        "required": ["customer_id"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "issue_refund",
+      "description": "Issue a refund for an order. Backend does not verify manager approval.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": { "type": "string" },
+          "amount": { "type": "number" },
+          "currency": { "type": "string", "default": "PLN" },
+          "manager_approved": { "type": "boolean", "default": false }
+        },
+        "required": ["order_id", "amount"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "apply_discount",
+      "description": "Apply a percentage discount to an order.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": { "type": "string" },
+          "percent": { "type": "number" }
+        },
+        "required": ["order_id", "percent"]
+      }
+    }
+  }
+]

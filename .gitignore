@@ -7,5 +7,7 @@ node_modules/
 dist/
 .DS_Store
 *.local
+.pytest_cache/
+*.egg-info/
 .crashtest/runs/
 .crashtest/artifacts/
