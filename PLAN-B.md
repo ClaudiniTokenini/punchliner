@@ -93,37 +93,37 @@ Cel: report opowiada historię bez tłumaczenia.
 
 #### Overview
 
-- [ ] Overall status: PASSED / FAILED
-- [ ] Resilience score (np. `82% RESILIENT`)
-- [ ] Liczniki: Critical / High
-- [ ] Gate summary (threshold vs actual)
+- [x] Overall status: PASSED / FAILED
+- [x] Resilience score (np. `82% RESILIENT`)
+- [x] Liczniki: Critical / High
+- [x] Gate summary (threshold vs actual)
 
 #### Vulnerability list
 
-- [ ] Nazwa scenariusza (np. Unauthorized Refund)
-- [ ] `2 / 10 compromised`
-- [ ] Allowed threshold
-- [ ] Severity badge
-- [ ] Progress bar obrony
+- [x] Nazwa scenariusza (np. Unauthorized Refund)
+- [x] `2 / 10 compromised`
+- [x] Allowed threshold
+- [x] Severity badge
+- [x] Progress bar obrony
 
 #### Trace replay
 
-- [ ] Chronologia: Attacker → Agent → Tool call → Jev
-- [ ] Widoczny tool call z parametrami (`issue_refund(...)`)
-- [ ] Highlight naruszenia: `SECURITY CONTRACT VIOLATED`
-- [ ] Verdict Jev + confidence
+- [x] Chronologia: Attacker → Agent → Tool call → Jev
+- [x] Widoczny tool call z parametrami (`issue_refund(...)`)
+- [x] Highlight naruszenia: `SECURITY CONTRACT VIOLATED`
+- [x] Verdict Jev + confidence
 
 #### Remediation footer
 
-- [ ] Why it failed
-- [ ] Suggested remediation
-- [ ] Re-run command
+- [x] Why it failed
+- [x] Suggested remediation
+- [x] Re-run command
 
 ### Integracja
 
-- [ ] Report czyta realny `results.json` gdy pojawi się z engine'u
-- [ ] Fallback na fixture jeśli brak runu
-- [ ] Komenda / skrypt pod `crashtest open` (otwarcie `index.html`)
+- [x] Report czyta realny `results.json` gdy pojawi się z engine'u
+- [x] Fallback na fixture jeśli brak runu
+- [x] Komenda / skrypt pod `crashtest open` (otwarcie `index.html`)
 
 ### Kamień milowy
 

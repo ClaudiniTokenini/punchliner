@@ -178,3 +178,92 @@ def test_run_fails_when_target_llm_is_down(tmp_path: Path) -> None:
             printer=NullPrinter(),
             run_id="test-down",
         )
+
+
+def test_open_copies_latest_results(tmp_path: Path, monkeypatch) -> None:
+    import shutil
+
+    monkeypatch.chdir(tmp_path)
+    fixture_src = Path(__file__).resolve().parents[1] / "fixtures" / "results.failed.json"
+    runs = tmp_path / ".crashtest" / "runs" / "demo"
+    runs.mkdir(parents=True)
+    shutil.copy2(fixture_src, runs / "results.json")
+    (tmp_path / "report" / "dist").mkdir(parents=True)
+    (tmp_path / "report" / "dist" / "index.html").write_text("<html></html>", encoding="utf-8")
+    (tmp_path / "fixtures").mkdir()
+    shutil.copy2(fixture_src, tmp_path / "fixtures" / "results.failed.json")
+
+    result = cli.invoke(app, ["open", "--no-browser"])
+    assert result.exit_code == 0, result.output
+    copied = tmp_path / "report" / "public" / "results.json"
+    assert copied.is_file()
+    data = json.loads(copied.read_text(encoding="utf-8"))
+    assert data["summary"]["status"] == "FAILED"
+
+
+def test_run_raport_opens_report(tmp_path: Path, monkeypatch) -> None:
+    from crashtest.schemas import Gate, Results, Summary
+
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".crashtest").mkdir()
+    (tmp_path / ".crashtest" / "config.yml").write_text(
+        "target:\n  url: http://127.0.0.1:8000/chat\n"
+        "models:\n  target: test\n"
+        "execution:\n  runs: 1\n  max_turns: 1\n"
+        "gates:\n  critical_max_compromise_rate: 0.0\n  high_max_compromise_rate: 0.1\n",
+        encoding="utf-8",
+    )
+    (tmp_path / ".crashtest" / "scenarios.yml").write_text(
+        "- id: unauthorized-refund\n"
+        "  name: Unauthorized Refund\n"
+        "  severity: critical\n"
+        "  attack_objective: x\n"
+        "  security_invariant: y\n"
+        "  threshold: 0.0\n"
+        "  messages: ['hi']\n",
+        encoding="utf-8",
+    )
+    results_path = tmp_path / ".crashtest" / "runs" / "x" / "results.json"
+    results_path.parent.mkdir(parents=True)
+    results_path.write_text("{}", encoding="utf-8")
+
+    fake_results = Results(
+        summary=Summary(
+            status="FAILED",
+            resilience_score=0.0,
+            critical_count=1,
+            high_count=0,
+            total_runs=1,
+            compromised_runs=1,
+        ),
+        gate=Gate(
+            passed=False,
+            critical_max_compromise_rate=0.0,
+            high_max_compromise_rate=0.1,
+            observed_critical_compromise_rate=1.0,
+            exit_code=1,
+        ),
+        scenarios=[],
+        runs=[],
+        remediation={
+            "why_it_failed": "x",
+            "suggested_remediation": "y",
+            "rerun_command": "npm test",
+        },
+    )
+    opened: list[Path] = []
+
+    def fake_execute(**kwargs):
+        return fake_results, results_path
+
+    def fake_open(root, *, src=None, no_browser=False, dev=False):
+        opened.append(src or Path("missing"))
+        return src or Path("missing")
+
+    monkeypatch.setattr("crashtest.cli.execute", fake_execute)
+    monkeypatch.setattr("crashtest.cli.TargetClient", lambda url: type("T", (), {"close": lambda self: None})())
+    monkeypatch.setattr("crashtest.cli._open_report", fake_open)
+
+    result = cli.invoke(app, ["run", "--raport"])
+    assert result.exit_code == 1
+    assert opened == [results_path]
