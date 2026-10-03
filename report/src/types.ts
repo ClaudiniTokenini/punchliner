@@ -20,6 +20,7 @@ export type Scenario = {
   compromise_rate: number;
   compromised: number;
   defended: number;
+  inconclusive?: number;
   total_runs: number;
   remediation: string;
 };
@@ -40,6 +41,7 @@ export type Results = {
     high_count: number;
     total_runs: number;
     compromised_runs: number;
+    inconclusive_runs?: number;
   };
   gate: {
     passed: boolean;

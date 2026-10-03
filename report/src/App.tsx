@@ -1,292 +1,85 @@
 import { useEffect, useState } from "react";
-import fixture from "../../fixtures/results.failed.json";
-import type { Results, Run, TraceItem } from "./types";
+import { ArrowDownToLine } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Alert, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Scenarios } from "@/components/scenarios";
+import { TraceReplay } from "@/components/trace-replay";
+import { Remediation } from "@/components/remediation";
+import { downloadReport, highCompromiseRate, loadResults, pct } from "@/lib/report";
+import type { Results } from "@/types";
 
-function pct(value: number): string {
-  return `${Math.round(value * 100)}%`;
-}
-
-function formatArgs(args: Record<string, unknown> | undefined): string {
-  if (!args) return "";
-  return Object.entries(args)
-    .map(([k, v]) => `${k}=${JSON.stringify(v)}`)
-    .join(", ");
-}
-
-function formatToolCall(item: TraceItem): string {
-  return `${item.name ?? "tool"}(${formatArgs(item.arguments)})`;
-}
-
-function formatTraceBody(item: TraceItem): string {
-  if (item.role === "tool_call") return formatToolCall(item);
-  if (typeof item.content === "string") return item.content;
-  if (item.content) return JSON.stringify(item.content, null, 2);
-  if (item.arguments) return formatToolCall(item);
-  return "";
-}
-
-function isViolation(item: TraceItem, compromised: boolean): boolean {
-  return compromised && item.role === "tool_call";
-}
-
-// ponytail: prefer engine artifact; fixture only when missing
-async function loadResults(): Promise<{ data: Results; source: string }> {
-  try {
-    const res = await fetch("./results.json", { cache: "no-store" });
-    if (res.ok) {
-      return { data: (await res.json()) as Results, source: "results.json" };
-    }
-  } catch {
-    /* no artifact yet */
-  }
-  return {
-    data: fixture as Results,
-    source: "fixtures/results.failed.json",
-  };
-}
+type ReportState = { data: Results; source: string };
 
 export default function App() {
-  const [data, setData] = useState<Results | null>(null);
-  const [source, setSource] = useState("");
+  const [report, setReport] = useState<ReportState | null>(null);
+  const [tab, setTab] = useState("overview");
+  const [scenarioId, setScenarioId] = useState("all");
 
   useEffect(() => {
-    void loadResults().then(({ data, source }) => {
-      setData(data);
-      setSource(source);
-    });
+    let cancelled = false;
+    void loadResults().then((result) => { if (!cancelled) setReport(result); });
+    return () => { cancelled = true; };
   }, []);
 
-  if (!data) {
-    return (
-      <main className="mx-auto max-w-5xl px-5 py-10 text-[var(--muted)]">
-        Loading report…
-      </main>
-    );
+  if (!report) return <main className="mx-auto max-w-7xl space-y-12 p-12" aria-label="Loading report" aria-busy="true"><Skeleton className="h-12 w-64" /><Skeleton className="h-48 w-full" /></main>;
+
+  const { data, source } = report;
+  const failed = data.summary.status === "FAILED" || !data.gate.passed;
+  const highRate = highCompromiseRate(data);
+
+  function replayScenario(id: string) {
+    setScenarioId(id);
+    setTab("traces");
   }
 
-  const failed = data.summary.status === "FAILED" || !data.gate.passed;
-  const compromisedRun =
-    data.runs.find((r) => r.verdict === "COMPROMISED") ?? data.runs[0];
-
   return (
-    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 px-5 py-8 md:px-8">
-      <Overview data={data} failed={failed} source={source} />
-      <VulnerabilityList scenarios={data.scenarios} />
-      <TraceReplay run={compromisedRun} />
-      <RemediationFooter remediation={data.remediation} />
+    <main className="mx-auto max-w-7xl px-6 py-12 md:px-12 md:py-16">
+      <Tabs value={tab} onValueChange={(value) => setTab(String(value))} className="gap-12">
+        <header className="flex flex-wrap items-center justify-between gap-6">
+          <div className="flex flex-wrap items-center gap-6"><CardTitle><h1>Agent Crash Test</h1></CardTitle><Badge variant={failed ? "destructive" : "default"}>{failed ? "FAILED" : "PASSED"}</Badge></div>
+          <Button variant="outline" onClick={() => downloadReport(data)}><ArrowDownToLine />Export JSON</Button>
+        </header>
+        {source !== "results.json" && <Alert><AlertTitle>Sample report</AlertTitle></Alert>}
+        <TabsList variant="line" aria-label="Report sections"><TabsTrigger value="overview">Overview</TabsTrigger><TabsTrigger value="traces">Trace replay</TabsTrigger></TabsList>
+        <TabsContent value="overview" className="space-y-12">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <Metric label="Resilience" value={pct(data.summary.resilience_score)}><Progress value={data.summary.resilience_score * 100} aria-label="Resilience" /></Metric>
+            <Metric label="Critical" value={String(data.summary.critical_count)} />
+            <Metric label="High" value={String(data.summary.high_count)} />
+            <Metric label="Compromised" value={`${data.summary.compromised_runs} / ${data.summary.total_runs}`} />
+          </div>
+          {(data.summary.inconclusive_runs ?? 0) > 0 && <Alert><AlertTitle>{data.summary.inconclusive_runs} inconclusive</AlertTitle></Alert>}
+          <Scenarios scenarios={data.scenarios} searchable={data.scenarios.length > 1} onReplay={replayScenario} />
+          <Accordion multiple>
+            <AccordionItem value="gate">
+              <AccordionTrigger>Gate thresholds</AccordionTrigger>
+              <AccordionContent>
+                <Table>
+                  <TableHeader><TableRow><TableHead>Severity</TableHead><TableHead>Observed</TableHead><TableHead>Allowed</TableHead></TableRow></TableHeader>
+                  <TableBody>
+                    <TableRow><TableCell>Critical</TableCell><TableCell>{pct(data.gate.observed_critical_compromise_rate)}</TableCell><TableCell>{pct(data.gate.critical_max_compromise_rate)}</TableCell></TableRow>
+                    <TableRow><TableCell>High</TableCell><TableCell>{highRate === null ? "Not tested" : pct(highRate)}</TableCell><TableCell>{pct(data.gate.high_max_compromise_rate)}</TableCell></TableRow>
+                    <TableRow><TableCell>Exit code</TableCell><TableCell colSpan={2}>{data.gate.exit_code}</TableCell></TableRow>
+                  </TableBody>
+                </Table>
+              </AccordionContent>
+            </AccordionItem>
+            <Remediation remediation={data.remediation} />
+          </Accordion>
+        </TabsContent>
+        <TabsContent value="traces"><TraceReplay data={data} scenarioId={scenarioId} onScenarioChange={setScenarioId} /></TabsContent>
+      </Tabs>
     </main>
   );
 }
 
-function Overview({
-  data,
-  failed,
-  source,
-}: {
-  data: Results;
-  failed: boolean;
-  source: string;
-}) {
-  return (
-    <header className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] px-6 py-6 shadow-sm">
-      <p className="m-0 text-sm uppercase tracking-[0.18em] text-[var(--muted)]">
-        Agent Crash Test
-      </p>
-      <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="m-0 text-3xl font-semibold tracking-tight md:text-4xl">
-            {pct(data.summary.resilience_score)} RESILIENT
-          </h1>
-          <p className="mt-2 text-sm text-[var(--muted)]">
-            Data source:{" "}
-            <code className="rounded bg-black/5 px-1.5 py-0.5">{source}</code>
-          </p>
-        </div>
-        <div
-          className={`rounded-full px-4 py-2 text-sm font-semibold ${
-            failed
-              ? "bg-[#fee4e2] text-[var(--fail)]"
-              : "bg-[#dcfae6] text-[var(--pass)]"
-          }`}
-        >
-          {failed ? "BUILD FAILED" : "BUILD PASSED"}
-        </div>
-      </div>
-
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Status" value={failed ? "FAILED" : "PASSED"} />
-        <Stat label="Critical" value={String(data.summary.critical_count)} />
-        <Stat label="High" value={String(data.summary.high_count)} />
-        <Stat
-          label="Compromised"
-          value={`${data.summary.compromised_runs} / ${data.summary.total_runs}`}
-        />
-      </div>
-
-      <div className="mt-4 rounded-xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm">
-        <div className="font-semibold">Gate summary</div>
-        <p className="mt-1 m-0 text-[var(--muted)]">
-          Critical rate {pct(data.gate.observed_critical_compromise_rate)} ·
-          allowed {pct(data.gate.critical_max_compromise_rate)} · High allowed{" "}
-          {pct(data.gate.high_max_compromise_rate)} · exit {data.gate.exit_code}
-        </p>
-      </div>
-    </header>
-  );
-}
-
-function VulnerabilityList({ scenarios }: { scenarios: Results["scenarios"] }) {
-  return (
-    <section className="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-5">
-      <h2 className="m-0 text-lg font-semibold">Vulnerabilities</h2>
-      <ul className="mt-4 space-y-3">
-        {scenarios.map((scenario) => {
-          const defendedPct = Math.round(
-            (scenario.defended / Math.max(scenario.total_runs, 1)) * 100,
-          );
-          return (
-            <li
-              key={scenario.id}
-              className="rounded-lg border border-[var(--line)] bg-white/70 p-4"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="text-lg font-semibold uppercase tracking-tight">
-                  {scenario.name}
-                </div>
-                <span className="rounded-full bg-[#ffefd6] px-2.5 py-1 text-xs font-semibold uppercase text-[var(--warn)]">
-                  {scenario.severity}
-                </span>
-              </div>
-              <p className="mt-2 text-sm text-[var(--muted)]">
-                {scenario.compromised} / {scenario.total_runs} compromised ·
-                Allowed: {pct(scenario.threshold)}
-              </p>
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#e8e2d7]">
-                <div
-                  className="h-full rounded-full bg-[var(--accent)]"
-                  style={{ width: `${defendedPct}%` }}
-                />
-              </div>
-              <p className="mt-2 text-xs text-[var(--muted)]">
-                {defendedPct}% defended
-              </p>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
-  );
-}
-
-function TraceReplay({ run }: { run: Run | undefined }) {
-  if (!run) {
-    return (
-      <section className="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-5">
-        <h2 className="m-0 text-lg font-semibold">Trace Replay</h2>
-        <p className="mt-2 text-[var(--muted)]">No run to replay.</p>
-      </section>
-    );
-  }
-
-  const compromised = run.verdict === "COMPROMISED";
-
-  return (
-    <section className="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-5">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="m-0 text-lg font-semibold">Trace Replay</h2>
-        <span className="text-sm text-[var(--muted)]">{run.run_id}</span>
-      </div>
-
-      <ol className="mt-4 space-y-0">
-        {run.trace.map((item, index) => {
-          const violation = isViolation(item, compromised);
-          return (
-            <li key={`${run.run_id}-${index}`} className="relative pb-4 pl-6">
-              {index < run.trace.length - 1 && (
-                <span className="absolute left-[0.55rem] top-6 h-[calc(100%-0.5rem)] w-px bg-[var(--line)]" />
-              )}
-              <span className="absolute left-0 top-2 h-2.5 w-2.5 rounded-full bg-[var(--accent)]" />
-              <div
-                className={`rounded-lg border px-4 py-3 ${
-                  violation
-                    ? "border-[var(--fail)] bg-[#fee4e2]"
-                    : "border-[var(--line)] bg-white/70"
-                }`}
-              >
-                <div className="text-xs font-semibold uppercase tracking-wide text-[var(--accent)]">
-                  {item.role === "tool_call"
-                    ? "Tool Call"
-                    : item.role === "tool_result"
-                      ? "Tool Result"
-                      : item.role}
-                </div>
-                <pre className="mt-2 overflow-x-auto whitespace-pre-wrap font-mono text-sm">
-                  {formatTraceBody(item)}
-                </pre>
-                {violation && (
-                  <p className="mt-3 mb-0 text-sm font-semibold text-[var(--fail)]">
-                    SECURITY CONTRACT VIOLATED
-                  </p>
-                )}
-              </div>
-            </li>
-          );
-        })}
-      </ol>
-
-      <div
-        className={`mt-2 rounded-lg border px-4 py-3 ${
-          compromised
-            ? "border-[var(--fail)] bg-[#fff5f4]"
-            : "border-[var(--pass)] bg-[#f3faf6]"
-        }`}
-      >
-        <div className="text-xs font-semibold uppercase tracking-wide">Jev</div>
-        <p className="mt-1 mb-0 font-semibold">
-          {run.jev_verdict.verdict} · {pct(run.jev_verdict.confidence)} confidence
-        </p>
-      </div>
-    </section>
-  );
-}
-
-function RemediationFooter({
-  remediation,
-}: {
-  remediation: Results["remediation"];
-}) {
-  return (
-    <section className="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-5">
-      <h2 className="m-0 text-lg font-semibold">Remediation</h2>
-      <dl className="mt-4 space-y-4 text-sm">
-        <div>
-          <dt className="font-semibold">Why it failed</dt>
-          <dd className="mt-1 m-0 text-[var(--muted)]">{remediation.why_it_failed}</dd>
-        </div>
-        <div>
-          <dt className="font-semibold">Suggested remediation</dt>
-          <dd className="mt-1 m-0 text-[var(--muted)]">
-            {remediation.suggested_remediation}
-          </dd>
-        </div>
-        <div>
-          <dt className="font-semibold">Re-run command</dt>
-          <dd className="mt-1 m-0">
-            <code className="rounded bg-black/5 px-2 py-1 font-mono text-[var(--ink)]">
-              {remediation.rerun_command}
-            </code>
-          </dd>
-        </div>
-      </dl>
-    </section>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-[var(--line)] bg-white/60 px-4 py-3">
-      <div className="text-xs uppercase tracking-wide text-[var(--muted)]">{label}</div>
-      <div className="mt-1 text-2xl font-semibold">{value}</div>
-    </div>
-  );
+function Metric({ label, value, children }: { label: string; value: string; children?: React.ReactNode }) {
+  return <Card><CardHeader><CardTitle>{label}</CardTitle></CardHeader><CardContent className="space-y-6"><CardTitle>{value}</CardTitle>{children}</CardContent></Card>;
 }
