@@ -11,3 +11,4 @@ dist/
 *.egg-info/
 .crashtest/runs/
 .crashtest/artifacts/
+.crashtest/chat/

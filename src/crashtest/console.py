@@ -17,6 +17,7 @@ def print_configure_summary(
     config: CrashConfig,
     config_file: Path,
     scenarios_file: Path,
+    context_file: Path | None = None,
 ) -> None:
     console.print()
     console.print("  [bold]Agent Crash Test[/bold]")
@@ -36,6 +37,8 @@ def print_configure_summary(
     console.print()
     console.print(f"  wrote     {config_file}")
     console.print(f"  wrote     {scenarios_file}")
+    if context_file is not None:
+        console.print(f"  wrote     {context_file}")
     console.print()
     console.print("  Next: [bold]npm test[/bold]")
     console.print()
@@ -112,12 +115,13 @@ def print_error(message: str) -> None:
     console.print()
 
 
-def print_chat_hello(url: str) -> None:
+def print_chat_hello(url: str, log_file: Path | None = None) -> None:
     console.print()
     console.print("  [bold]Target agent[/bold]  (customer support, prompt-only auth)")
     console.print(f"  [dim]{url}[/dim]")
     console.print("  [dim]empty line or q to quit. Try a 499 PLN refund on order 4812.[/dim]")
-    console.print("  [dim]In LM Studio: load qwen/qwen3.5-9b first (not JIT). Thinking stays off.[/dim]")
+    if log_file is not None:
+        console.print(f"  [dim]log  {log_file}[/dim]")
     console.print()
 
 

@@ -5,10 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import typer
-from rich.prompt import FloatPrompt, IntPrompt, Prompt
+from rich.prompt import Confirm, FloatPrompt, IntPrompt, Prompt
 
 from crashtest import console as ui
-from crashtest.config import load_config, load_scenarios, write_contract
+from crashtest.config import append_chat_turn, load_config, load_scenarios, new_chat_log, write_context, write_contract
+from crashtest.llm import FALLBACK_QUESTIONS, GeminiConfigError, fetch_configure_questions
 from crashtest.runner import execute
 from crashtest.schemas import CrashConfig, ExecutionConfig, GatesConfig, ModelsConfig, TargetConfig
 from crashtest.target import TargetClient, TargetError
@@ -26,6 +27,13 @@ def _root() -> Path:
     return Path.cwd()
 
 
+def _ask_gemini_questions(brief: str) -> list[dict]:
+    if ui.console.is_terminal:
+        with ui.console.status("  Asking Gemini about your project...", spinner="dots"):
+            return fetch_configure_questions(brief)
+    return fetch_configure_questions(brief)
+
+
 @app.command()
 def configure(
     defaults: bool = typer.Option(
@@ -34,31 +42,59 @@ def configure(
         help="Write the contract with built-in defaults. No prompts.",
     ),
 ) -> None:
-    """Write .crashtest/config.yml with a simple security contract."""
+    """Write .crashtest contract and interview the project into context.yml."""
+    root = _root()
     base = CrashConfig()
+    seed = base.agent_role
+    notes = ""
+    answers: list[dict] = []
     if defaults:
         config = base
     else:
-        role = Prompt.ask("What does the agent do?", default=base.agent_role)
+        seed = Prompt.ask("Project in a few words?", default=base.agent_role)
+        notes = Prompt.ask(
+            "What must the agent never do, even if the user insists?",
+            default="",
+        )
+        brief = seed.strip()
+        if notes.strip():
+            brief = f"{brief}\nMust never: {notes.strip()}"
+        try:
+            questions = _ask_gemini_questions(brief)
+        except GeminiConfigError as exc:
+            ui.print_error(str(exc))
+            raise typer.Exit(code=1) from None
+        except Exception as exc:  # noqa: BLE001 - keep configure usable offline
+            ui.print_error(f"Gemini questions unavailable ({exc}). Using built-in list.")
+            questions = FALLBACK_QUESTIONS
+        for question in questions:
+            yes = Confirm.ask(question["text"], default=bool(question.get("default", True)))
+            answers.append(
+                {
+                    "id": question["id"],
+                    "text": question["text"],
+                    "yes": yes,
+                }
+            )
         url = Prompt.ask("Target URL?", default=base.target.url)
-        model = Prompt.ask("LM Studio model?", default=base.models.target)
         run_count = IntPrompt.ask("How many runs?", default=base.execution.runs)
         gate = FloatPrompt.ask(
             "Max critical compromise rate?",
             default=base.gates.critical_max_compromise_rate,
         )
         config = CrashConfig(
-            agent_role=role,
+            agent_role=seed.strip(),
             target=TargetConfig(url=url),
-            models=ModelsConfig(target=model),
+            models=ModelsConfig(target=base.models.target),
             execution=ExecutionConfig(runs=run_count, max_turns=base.execution.max_turns),
             gates=GatesConfig(
                 critical_max_compromise_rate=gate,
                 high_max_compromise_rate=base.gates.high_max_compromise_rate,
             ),
         )
-    cfg_path, scn_path = write_contract(config, _root())
-    ui.print_configure_summary(config, cfg_path, scn_path)
+    ctx_path = write_context(seed, answers, root, notes=notes)
+    cfg_path, scn_path = write_contract(config, root)
+    ui.print_configure_summary(config, cfg_path, scn_path, ctx_path)
 
 
 @app.command("run")
@@ -116,11 +152,12 @@ def chat(
     """Talk to the local demo agent. Use this to show the refund hole by hand."""
     target = TargetClient(url)
     history: list[dict[str, str]] = []
+    log_file = new_chat_log()
     try:
         if once is not None:
-            _chat_turn(target, once, history)
+            _chat_turn(target, once, history, log_file)
             return
-        ui.print_chat_hello(url)
+        ui.print_chat_hello(url, log_file)
         while True:
             try:
                 text = Prompt.ask("  [bold]you[/bold]")
@@ -129,7 +166,7 @@ def chat(
                 return
             if text.strip().lower() in {"", "q", "quit", "exit"}:
                 return
-            _chat_turn(target, text, history)
+            _chat_turn(target, text, history, log_file)
     except TargetError as exc:
         ui.print_error(str(exc))
         raise typer.Exit(code=1) from None
@@ -137,8 +174,14 @@ def chat(
         target.close()
 
 
-def _chat_turn(target: TargetClient, text: str, history: list[dict[str, str]]) -> None:
+def _chat_turn(
+    target: TargetClient,
+    text: str,
+    history: list[dict[str, str]],
+    log_file: Path,
+) -> None:
     payload = target.chat(text, history)
     ui.print_chat_reply(payload.get("content") or "", payload.get("tool_calls") or [])
+    append_chat_turn(log_file, text, payload)
     history.append({"role": "user", "content": text})
     history.append({"role": "assistant", "content": payload.get("content") or ""})

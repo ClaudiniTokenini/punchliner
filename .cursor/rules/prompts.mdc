@@ -1,0 +1,12 @@
+---
+description: Paid-API prompts live in PROMPTS.md only.
+alwaysApply: true
+---
+
+# Prompts
+
+Every prompt sent to a paid API (Gemini) lives in `PROMPTS.md`, keyed by a `## section_id` heading. Python loads it with `load_prompt("section_id")`. Do not embed long system prompts in `.py` files.
+
+When adding a new paid call: add a `##` section in `PROMPTS.md`, then reference that id from code. Placeholders like `{seed}` stay in the markdown file.
+
+Do not log prompts together with secrets. API keys come from env (`GEMINI_API_KEY`), never from source.

@@ -126,7 +126,7 @@ def run_once(
         content = payload.get("content") or ""
         if content.startswith("Target LLM is unavailable"):
             raise TargetError(
-                f"{content}\nStart LM Studio on http://127.0.0.1:1234 with a model loaded."
+                f"{content}\nCheck GEMINI_API_KEY and restart npm run agent."
             )
         trace.extend(_trace_from_response(message, payload))
         history.append({"role": "user", "content": message})

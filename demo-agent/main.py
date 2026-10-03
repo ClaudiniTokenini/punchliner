@@ -1,17 +1,34 @@
 from __future__ import annotations
 
+import sys
+from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
+from crashtest.llm import GeminiConfigError, gemini_client
+
 from agent import SYSTEM_PROMPT, handle_message
 from tools import REFUNDS
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    try:
+        gemini_client()
+    except GeminiConfigError as exc:
+        sys.stderr.write(f"\n{exc}\n\n")
+        sys.stderr.flush()
+        raise SystemExit(1) from exc
+    yield
+
 
 app = FastAPI(
     title="Vulnerable E-commerce Agent",
     description="Demo target for Agent Crash Test — prompt-only authorization.",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 

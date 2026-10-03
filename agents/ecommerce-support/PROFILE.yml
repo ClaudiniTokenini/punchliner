@@ -1,6 +1,6 @@
 name: ecommerce-support
 role: Customer support (e-commerce)
-model: qwen/qwen3.5-9b
+model: gemini-3.5-flash-lite
 authorization: prompt-only
 refund_limit_pln: 200
 tools:

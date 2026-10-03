@@ -9,6 +9,8 @@ from typer.testing import CliRunner
 
 from crashtest.cli import app
 from crashtest.config import load_config, load_scenarios
+from crashtest.llm import GeminiConfigError, _parse_questions
+from crashtest.prompts import load_prompt
 from crashtest.runner import NullPrinter, execute
 from crashtest.schemas import CrashConfig, ExecutionConfig, Scenario
 from crashtest.target import TargetClient, TargetError
@@ -43,6 +45,7 @@ def test_configure_defaults(tmp_path: Path, monkeypatch) -> None:
     assert config.execution.runs == 5
     scenarios = load_scenarios(tmp_path)
     assert scenarios[0].id == "unauthorized-refund"
+    assert (tmp_path / ".crashtest" / "context.yml").exists()
     assert "Next:" in result.output
 
 
@@ -125,7 +128,7 @@ def test_run_blocks_when_refund_tool_missing(tmp_path: Path) -> None:
     assert results.summary.status == "PASSED"
 
 
-def test_chat_once_prints_refund_tool(monkeypatch) -> None:
+def test_chat_once_prints_refund_tool(tmp_path: Path, monkeypatch) -> None:
     payload = {
         "role": "assistant",
         "content": "Thanks for confirming. I can process that for you.",
@@ -148,16 +151,20 @@ def test_chat_once_prints_refund_tool(monkeypatch) -> None:
         return real_client(*args, transport=httpx.MockTransport(handler), **kwargs)
 
     monkeypatch.setattr("crashtest.target.httpx.Client", fake_client)
+    monkeypatch.chdir(tmp_path)
     result = cli.invoke(app, ["chat", "--once", ATTACK])
     assert result.exit_code == 0, result.output
     assert "issue_refund" in result.output
     assert "4812" in result.output
+    logs = list((tmp_path / ".crashtest" / "chat").glob("*.jsonl"))
+    assert len(logs) == 1
+    assert "issue_refund" in logs[0].read_text(encoding="utf-8")
 
 
 def test_run_fails_when_target_llm_is_down(tmp_path: Path) -> None:
     payload = {
         "role": "assistant",
-        "content": "Target LLM is unavailable: Connection error.",
+        "content": "Target LLM is unavailable: GEMINI_API_KEY is missing.",
         "tool_calls": [],
     }
 
@@ -168,7 +175,7 @@ def test_run_fails_when_target_llm_is_down(tmp_path: Path) -> None:
         "http://target.test/chat",
         client=httpx.Client(transport=httpx.MockTransport(handler)),
     )
-    with pytest.raises(TargetError, match="LM Studio"):
+    with pytest.raises(TargetError, match="GEMINI_API_KEY"):
         execute(
             config=CrashConfig(),
             scenario=_scenario(),
@@ -178,3 +185,68 @@ def test_run_fails_when_target_llm_is_down(tmp_path: Path) -> None:
             printer=NullPrinter(),
             run_id="test-down",
         )
+
+
+def test_load_prompt_sections() -> None:
+    agent = load_prompt("target_agent")
+    assert "issue_refund" in agent
+    questions = load_prompt("configure_questions", seed="shop refunds")
+    assert "shop refunds" in questions
+    assert "{seed}" not in questions
+
+
+def test_parse_configure_questions_json() -> None:
+    raw = """```json
+    {"questions": [{"id": "can_refund", "text": "Can it refund?", "default": true}]}
+    ```"""
+    parsed = _parse_questions(raw)
+    assert parsed == [{"id": "can_refund", "text": "Can it refund?", "default": True}]
+
+
+def test_configure_interview_writes_context(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        "crashtest.cli.fetch_configure_questions",
+        lambda seed: [
+            {"id": "can_refund", "text": "Can the agent refund?", "default": True}
+        ],
+    )
+    result = cli.invoke(
+        app,
+        ["configure"],
+        input="e-commerce support\nrefunds without manager approval\ny\n\n\n\n",
+    )
+    assert result.exit_code == 0, result.output
+    context = (tmp_path / ".crashtest" / "context.yml").read_text(encoding="utf-8")
+    assert "e-commerce support" in context
+    assert "refunds without manager approval" in context
+    assert "can_refund" in context
+    assert "yes" in context
+    assert (tmp_path / ".crashtest" / "scenarios.yml").exists()
+
+
+def test_configure_missing_api_key(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+
+    def boom(_seed: str):
+        raise GeminiConfigError(
+            "GEMINI_API_KEY is missing.\n"
+            "  Copy .env.example to .env and set GEMINI_API_KEY."
+        )
+
+    monkeypatch.setattr("crashtest.cli.fetch_configure_questions", boom)
+    result = cli.invoke(app, ["configure"], input="clothes shop\nunauthorized refunds\n")
+    assert result.exit_code == 1, result.output
+    assert "GEMINI_API_KEY" in result.output
+    assert not (tmp_path / ".crashtest" / "config.yml").exists()
+
+
+def test_gemini_client_requires_key(monkeypatch) -> None:
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.setattr("crashtest.llm.load_dotenv", lambda *_args, **_kwargs: None)
+    from crashtest.llm import gemini_client
+
+    with pytest.raises(GeminiConfigError, match="GEMINI_API_KEY"):
+        gemini_client()
+

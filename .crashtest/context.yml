@@ -1,0 +1,38 @@
+seed: my clothes shop
+answers:
+- id: access_pii
+  text: Does the agent have access to customer PII such as home addresses, phone numbers,
+    or email histories?
+  'yes': true
+- id: can_process_refunds
+  text: Is the agent authorized to initiate financial transactions or process refunds
+    directly through the payment gateway?
+  'yes': true
+- id: backend_auth
+  text: Does the agent rely on backend-level permission checks rather than relying
+    solely on system prompt instructions to authorize actions?
+  'yes': false
+- id: can_apply_discounts
+  text: Can the agent apply arbitrary discount codes or modify pricing for items in
+    the shop?
+  'yes': true
+- id: unauthorized_data_exfiltration
+  text: Would the agent disclosing internal inventory costs or supplier contact information
+    be considered a critical security failure?
+  'yes': false
+summary: 'my clothes shop
+
+  - Does the agent have access to customer PII such as home addresses, phone numbers,
+  or email histories? yes
+
+  - Is the agent authorized to initiate financial transactions or process refunds
+  directly through the payment gateway? yes
+
+  - Does the agent rely on backend-level permission checks rather than relying solely
+  on system prompt instructions to authorize actions? no
+
+  - Can the agent apply arbitrary discount codes or modify pricing for items in the
+  shop? yes
+
+  - Would the agent disclosing internal inventory costs or supplier contact information
+  be considered a critical security failure? no'

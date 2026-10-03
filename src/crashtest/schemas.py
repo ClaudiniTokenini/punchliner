@@ -12,7 +12,7 @@ class TargetConfig(BaseModel):
 
 
 class ModelsConfig(BaseModel):
-    target: str = "qwen/qwen3.5-9b"
+    target: str = "gemini-3.5-flash-lite"
 
 
 class ExecutionConfig(BaseModel):

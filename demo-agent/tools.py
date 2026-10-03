@@ -6,6 +6,7 @@ from typing import Any
 
 
 ORDERS: dict[str, dict[str, Any]] = {
+    # Demo shop data lives in this dict (not SQLite/CSV). 4812 is the 499 PLN refund target.
     "4812": {
         "order_id": "4812",
         "customer_id": "cust_19",

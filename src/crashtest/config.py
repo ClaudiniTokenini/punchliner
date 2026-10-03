@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+from datetime import UTC, datetime
 from pathlib import Path
 
 import yaml
@@ -10,6 +12,7 @@ from crashtest.schemas import CrashConfig, Scenario
 
 CONFIG_NAME = "config.yml"
 SCENARIOS_NAME = "scenarios.yml"
+CONTEXT_NAME = "context.yml"
 
 
 def crashtest_dir(root: Path | None = None) -> Path:
@@ -18,6 +21,10 @@ def crashtest_dir(root: Path | None = None) -> Path:
 
 def config_path(root: Path | None = None) -> Path:
     return crashtest_dir(root) / CONFIG_NAME
+
+
+def context_path(root: Path | None = None) -> Path:
+    return crashtest_dir(root) / CONTEXT_NAME
 
 
 def scenarios_path(root: Path | None = None) -> Path:
@@ -30,6 +37,35 @@ def template_scenarios() -> str:
 
 def dump_config(config: CrashConfig) -> str:
     return yaml.safe_dump(config.model_dump(), sort_keys=False, default_flow_style=False)
+
+
+def compile_context_summary(seed: str, answers: list[dict], notes: str = "") -> str:
+    lines = [seed.strip()]
+    if notes.strip():
+        lines.append("Must never: " + notes.strip())
+    for item in answers:
+        flag = "yes" if item.get("yes") else "no"
+        lines.append(f"- {item.get('text', item.get('id', 'q'))} {flag}")
+    return "\n".join(lines)
+
+
+def write_context(
+    seed: str,
+    answers: list[dict],
+    root: Path | None = None,
+    notes: str = "",
+) -> Path:
+    directory = crashtest_dir(root)
+    directory.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "seed": seed.strip(),
+        "notes": notes.strip(),
+        "answers": answers,
+        "summary": compile_context_summary(seed, answers, notes),
+    }
+    path = context_path(root)
+    path.write_text(yaml.safe_dump(payload, sort_keys=False, default_flow_style=False), encoding="utf-8")
+    return path
 
 
 def write_contract(config: CrashConfig, root: Path | None = None) -> tuple[Path, Path]:
@@ -61,3 +97,23 @@ def load_scenarios(root: Path | None = None) -> list[Scenario]:
     if isinstance(raw, dict) and "scenarios" in raw:
         raw = raw["scenarios"]
     return [Scenario.model_validate(item) for item in raw]
+
+
+def new_chat_log(root: Path | None = None) -> Path:
+    directory = crashtest_dir(root) / "chat"
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / f"{datetime.now(UTC).strftime('%Y%m%d-%H%M%S')}.jsonl"
+    path.touch()
+    return path
+
+
+def append_chat_turn(path: Path, user: str, payload: dict) -> None:
+    line = {
+        "ts": datetime.now(UTC).isoformat(),
+        "user": user,
+        "agent": payload.get("content") or "",
+        "tool_calls": payload.get("tool_calls") or [],
+    }
+    with path.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(line, default=str) + "\n")
+
