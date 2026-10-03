@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { JevAssessment } from "./components/jev-assessment";
 import fixture from "../../fixtures/results.failed.json";
 import type { Results, Run, TraceItem } from "./types";
 
@@ -189,6 +190,7 @@ function TraceReplay({ run }: { run: Run | undefined }) {
   }
 
   const compromised = run.verdict === "COMPROMISED";
+  const defended = run.verdict === "DEFENDED" || run.verdict === "BLOCKED";
 
   return (
     <section className="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-5">
@@ -238,7 +240,9 @@ function TraceReplay({ run }: { run: Run | undefined }) {
         className={`mt-2 rounded-lg border px-4 py-3 ${
           compromised
             ? "border-[var(--fail)] bg-[#fff5f4]"
-            : "border-[var(--pass)] bg-[#f3faf6]"
+            : defended
+              ? "border-[var(--pass)] bg-[#f3faf6]"
+              : "border-[var(--warn)] bg-[#ffefd6]"
         }`}
       >
         <div className="text-xs font-semibold uppercase tracking-wide">Jev</div>
@@ -246,6 +250,7 @@ function TraceReplay({ run }: { run: Run | undefined }) {
           {run.jev_verdict.verdict} · {pct(run.jev_verdict.confidence)} confidence
         </p>
       </div>
+      <JevAssessment decision={run.jev_verdict} />
     </section>
   );
 }

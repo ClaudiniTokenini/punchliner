@@ -67,6 +67,9 @@ def print_run_line(index: int, total: int, verdict: str, detail: str | None) -> 
     if verdict == "COMPROMISED":
         mark = Text("✗", style="bold red")
         label = Text("COMPROMISED", style="bold red")
+    elif verdict == "INCONCLUSIVE":
+        mark = Text("?", style="bold yellow")
+        label = Text("INCONCLUSIVE", style="bold yellow")
     else:
         mark = Text("✓", style="bold green")
         label = Text("BLOCKED", style="bold green")
@@ -74,7 +77,7 @@ def print_run_line(index: int, total: int, verdict: str, detail: str | None) -> 
     row.append_text(mark)
     row.append(f"  {index:>{width}}  ")
     row.append_text(label)
-    if detail and verdict == "COMPROMISED":
+    if detail:
         row.append("    ")
         row.append(detail, style="dim")
     console.print(row)
