@@ -1,7 +1,11 @@
-"""CLI: crashtest configure / crashtest run."""
+"""CLI: crashtest configure / run / chat / open."""
 
 from __future__ import annotations
 
+import shutil
+import subprocess
+import sys
+import webbrowser
 from pathlib import Path
 
 import typer
@@ -105,6 +109,12 @@ def run_command(
         min=1,
         help="Override execution.runs from config.yml.",
     ),
+    report: bool = typer.Option(
+        False,
+        "--report",
+        "--raport",
+        help="After the run, build and open the HTML report.",
+    ),
 ) -> None:
     """Attack the target and score the security gate."""
     root = _root()
@@ -121,7 +131,7 @@ def run_command(
     scenario = scenarios[0]
     target = TargetClient(config.target.url)
     try:
-        results, _ = execute(
+        results, results_path = execute(
             config=config,
             scenario=scenario,
             target=target,
@@ -133,6 +143,13 @@ def run_command(
         raise typer.Exit(code=1) from None
     finally:
         target.close()
+
+    if report:
+        try:
+            _open_report(root, src=results_path)
+        except Exception as exc:  # noqa: BLE001 - still return gate exit code
+            ui.print_error(f"Report failed: {exc}")
+
     raise typer.Exit(code=results.gate.exit_code)
 
 
@@ -185,3 +202,87 @@ def _chat_turn(
     append_chat_turn(log_file, text, payload)
     history.append({"role": "user", "content": text})
     history.append({"role": "assistant", "content": payload.get("content") or ""})
+
+
+def _latest_results(root: Path) -> Path:
+    runs = root / ".crashtest" / "runs"
+    if runs.is_dir():
+        candidates = sorted(runs.glob("*/results.json"), key=lambda p: p.stat().st_mtime)
+        if candidates:
+            return candidates[-1]
+    fixture = root / "fixtures" / "results.failed.json"
+    if fixture.is_file():
+        return fixture
+    raise FileNotFoundError(
+        "No results.json found.\n  Next: npm test   (or keep fixtures/results.failed.json)"
+    )
+
+
+def _open_report(
+    root: Path,
+    *,
+    src: Path | None = None,
+    no_browser: bool = False,
+    dev: bool = False,
+) -> Path:
+    report = root / "report"
+    if not report.is_dir():
+        raise FileNotFoundError("Missing report/ folder.")
+
+    src = src or _latest_results(root)
+    public = report / "public"
+    public.mkdir(parents=True, exist_ok=True)
+    dest = public / "results.json"
+    shutil.copy2(src, dest)
+
+    dist = report / "dist"
+    index = dist / "index.html"
+    if not dev and not index.exists():
+        npm = shutil.which("npm")
+        if not npm:
+            raise RuntimeError("npm not found. Install Node or run: cd report && npm run build")
+        subprocess.check_call(
+            [npm, "run", "build"],
+            cwd=report,
+            shell=sys.platform == "win32",
+        )
+
+    if dist.is_dir():
+        shutil.copy2(dest, dist / "results.json")
+
+    ui.console.print(f"  results  {src}")
+    ui.console.print(f"  copied   {dest}")
+
+    if dev:
+        url = "http://127.0.0.1:5173/"
+        ui.console.print(f"  Next: cd report && npm run dev  →  {url}")
+        if not no_browser:
+            webbrowser.open(url)
+        return dest
+
+    html = index.resolve().as_uri()
+    ui.console.print(f"  report   {index}")
+    if not no_browser:
+        webbrowser.open(html)
+    return dest
+
+
+@app.command("open")
+def open_command(
+    no_browser: bool = typer.Option(
+        False,
+        "--no-browser",
+        help="Copy results into the report folder without opening a browser.",
+    ),
+    dev: bool = typer.Option(
+        False,
+        "--dev",
+        help="Point at the Vite dev server instead of dist/index.html.",
+    ),
+) -> None:
+    """Open the HTML report for the latest .crashtest run (fixture fallback)."""
+    try:
+        _open_report(_root(), no_browser=no_browser, dev=dev)
+    except (FileNotFoundError, RuntimeError) as exc:
+        ui.print_error(str(exc))
+        raise typer.Exit(code=1) from None
