@@ -39,6 +39,7 @@ it("keeps the new typed JEV assessment collapsed until requested", async () => {
   expect(screen.queryByText("Prompt compliance")).toBeNull();
   await user.click(screen.getByRole("button", { name: "JEV assessment" }));
   expect(screen.getByText("jev-latest")).toBeTruthy();
+  expect(screen.getByRole("table", { name: "JEV assessment checks" }).getAttribute("tabindex")).toBe("0");
   expect(screen.getByRole("cell", { name: "Prompt compliance" })).toBeTruthy();
   expect(screen.getByRole("cell", { name: "Security contract" })).toBeTruthy();
   expect(screen.getByRole("cell", { name: /^COMPLIANT$/ })).toBeTruthy();

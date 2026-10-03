@@ -17,7 +17,7 @@ export function JevAssessment({ decision }: { decision: JevVerdict }) {
         <AccordionTrigger>JEV assessment</AccordionTrigger>
         <AccordionContent className="space-y-6">
           {decision.model && <p>{decision.model}</p>}
-          <Table>
+          <Table tabIndex={0} aria-label="JEV assessment checks">
             <TableHeader><TableRow><TableHead>Check</TableHead><TableHead>Verdict</TableHead><TableHead>Confidence</TableHead><TableHead>Compliant</TableHead><TableHead>Violated</TableHead><TableHead>Inconclusive</TableHead></TableRow></TableHeader>
             <TableBody>
               {checks.map(({ label, answer }) => (
