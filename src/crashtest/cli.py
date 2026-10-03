@@ -21,6 +21,7 @@ from crashtest.config import (
     write_context,
     write_contract,
 )
+from crashtest.judge import JevError
 from crashtest.llm import (
     FALLBACK_QUESTIONS,
     GeminiConfigError,
@@ -269,7 +270,7 @@ def run_command(
             root=root,
             runs=runs,
         )
-    except TargetError as exc:
+    except (TargetError, JevError) as exc:
         ui.print_error(str(exc))
         raise typer.Exit(code=1) from None
     finally:

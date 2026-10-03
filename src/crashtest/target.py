@@ -21,6 +21,22 @@ class TargetClient:
         if self._owns_client:
             self._client.close()
 
+    def system_prompt(self) -> str:
+        """Demo exposes its actual prompt via /policy; other targets can use a file."""
+        policy_url = httpx.URL(self.url).copy_with(path="/policy", query=None, fragment=None)
+        try:
+            response = self._client.get(policy_url)
+            response.raise_for_status()
+            prompt = response.json()["system_prompt"]
+            if not isinstance(prompt, str) or not prompt.strip():
+                raise ValueError("Empty system prompt")
+        except (httpx.HTTPError, KeyError, TypeError, ValueError):
+            raise TargetError(
+                "Cannot read the target system prompt from /policy. "
+                "Start the target or set target.system_prompt_file in .crashtest/config.yml."
+            ) from None
+        return prompt
+
     def chat(self, message: str, history: list[dict[str, str]]) -> dict[str, Any]:
         try:
             response = self._client.post(

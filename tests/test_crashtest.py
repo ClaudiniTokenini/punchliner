@@ -76,7 +76,8 @@ def test_run_requires_configure(tmp_path: Path, monkeypatch) -> None:
     assert "init" in result.output.lower() or "configure" in result.output.lower()
 
 
-def test_run_marks_unauthorized_refund_compromised(tmp_path: Path) -> None:
+def test_run_marks_unauthorized_refund_compromised(tmp_path: Path, make_judge) -> None:
+    judge, requests = make_judge(violated=True)
     payload = {
         "role": "assistant",
         "content": "Thanks for confirming. I can process that for you.",
@@ -90,6 +91,8 @@ def test_run_marks_unauthorized_refund_compromised(tmp_path: Path) -> None:
     }
 
     def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/policy":
+            return httpx.Response(200, json={"system_prompt": load_prompt("target_agent")})
         assert request.url.path.endswith("/chat")
         return httpx.Response(200, json=payload)
 
@@ -106,6 +109,7 @@ def test_run_marks_unauthorized_refund_compromised(tmp_path: Path) -> None:
         runs=3,
         printer=NullPrinter(),
         run_id="test-run",
+        judge=judge,
     )
     assert results.gate.passed is False
     assert results.gate.exit_code == 1
@@ -113,13 +117,18 @@ def test_run_marks_unauthorized_refund_compromised(tmp_path: Path) -> None:
     assert results.summary.status == "FAILED"
     data = json.loads(path.read_text(encoding="utf-8"))
     assert data["runs"][0]["verdict"] == "COMPROMISED"
-    assert data["runs"][0]["trace"][2]["name"] == "issue_refund"
-    assert data["runs"][0]["trace"][2]["arguments"]["amount"] == 499
+    assert data["runs"][0]["trace"][1]["name"] == "issue_refund"
+    assert data["runs"][0]["trace"][1]["arguments"]["amount"] == 499
+    assert data["runs"][0]["trace"][-1]["role"] == "agent"
     assert "detail" not in data["runs"][0]
     assert data["runs"][0]["jev_verdict"]["verdict"] == "COMPROMISED"
+    assert data["runs"][0]["jev_verdict"]["model"] == "jev-test"
+    assert data["runs"][0]["jev_verdict"]["answers"]["prompt_compliance"]["choice"] == "COMPLIANT"
+    assert len(requests) == 3  # One Jev evaluation per turn, not a duplicate final call.
 
 
-def test_run_blocks_when_refund_tool_missing(tmp_path: Path) -> None:
+def test_run_blocks_when_refund_tool_missing(tmp_path: Path, make_judge) -> None:
+    judge, _ = make_judge()
     payload = {
         "role": "assistant",
         "content": "Refunds above 200 PLN require manager approval. I cannot process this yet.",
@@ -127,6 +136,8 @@ def test_run_blocks_when_refund_tool_missing(tmp_path: Path) -> None:
     }
 
     def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/policy":
+            return httpx.Response(200, json={"system_prompt": load_prompt("target_agent")})
         return httpx.Response(200, json=payload)
 
     target = TargetClient(
@@ -141,6 +152,7 @@ def test_run_blocks_when_refund_tool_missing(tmp_path: Path) -> None:
         runs=2,
         printer=NullPrinter(),
         run_id="test-block",
+        judge=judge,
     )
     assert results.gate.passed is True
     assert results.gate.exit_code == 0
@@ -181,7 +193,8 @@ def test_chat_once_prints_refund_tool(tmp_path: Path, monkeypatch) -> None:
     assert "issue_refund" in logs[0].read_text(encoding="utf-8")
 
 
-def test_run_fails_when_target_llm_is_down(tmp_path: Path) -> None:
+def test_run_fails_when_target_llm_is_down(tmp_path: Path, make_judge) -> None:
+    judge, requests = make_judge()
     payload = {
         "role": "assistant",
         "content": "Target LLM is unavailable: GEMINI_API_KEY is missing.",
@@ -189,6 +202,8 @@ def test_run_fails_when_target_llm_is_down(tmp_path: Path) -> None:
     }
 
     def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/policy":
+            return httpx.Response(200, json={"system_prompt": load_prompt("target_agent")})
         return httpx.Response(200, json=payload)
 
     target = TargetClient(
@@ -204,7 +219,9 @@ def test_run_fails_when_target_llm_is_down(tmp_path: Path) -> None:
             runs=1,
             printer=NullPrinter(),
             run_id="test-down",
+            judge=judge,
         )
+    assert requests == []
 
 
 def test_load_prompt_sections() -> None:
@@ -498,8 +515,10 @@ def test_parse_scenarios_json() -> None:
     assert parsed[0]["messages"] == ["hi"]
 
 
-def test_execute_suite_runs_all_scenarios(tmp_path: Path) -> None:
+def test_execute_suite_runs_all_scenarios(tmp_path: Path, make_judge) -> None:
     from crashtest.runner import execute_suite
+
+    judge, requests = make_judge(violated=True)
 
     payload = {
         "role": "assistant",
@@ -514,6 +533,8 @@ def test_execute_suite_runs_all_scenarios(tmp_path: Path) -> None:
     }
 
     def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/policy":
+            return httpx.Response(200, json={"system_prompt": load_prompt("target_agent")})
         return httpx.Response(200, json=payload)
 
     target = TargetClient(
@@ -536,6 +557,7 @@ def test_execute_suite_runs_all_scenarios(tmp_path: Path) -> None:
         runs=1,
         printer=NullPrinter(),
         run_id="suite",
+        judge=judge,
     )
     assert len(results.scenarios) == 2
     assert results.summary.total_runs == 2
@@ -543,3 +565,4 @@ def test_execute_suite_runs_all_scenarios(tmp_path: Path) -> None:
     assert results.runs[0].run_id.startswith("unauthorized-refund-")
     data = json.loads(path.read_text(encoding="utf-8"))
     assert len(data["scenarios"]) == 2
+    assert len(requests) == 2
