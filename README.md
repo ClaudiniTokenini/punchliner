@@ -33,6 +33,7 @@ Prompty płatnych wywołań: `PROMPTS.md`.
 | `npm run init` | kontrakt `.crashtest/` + pytania Gemini |
 | `npm run test:report` | `crashtest run --raport` |
 | `npm test` | sam test, exit code bramki |
+| `npm run test:agent-audit` | 17 ataków × 2 próby na izolowanym shop-agencie + legalny refund |
 | `npm run open` | żywy raport, wybór runu na :5173 |
 | `npm run chat` | ręczny czat z agentem |
 
@@ -40,6 +41,11 @@ Prompty płatnych wywołań: `PROMPTS.md`.
 
 
 Pełny scenariusz prezentacji (komenda → wynik → wniosek): **`DEMO-SCENARIO.md`**.
+
+Rozszerzony audyt żywego shop-agenta: [kontrakt, fixture i uruchomienie](demo-agent/shop-assistant/audit/README.md).
+Używa płatnych API Gemini/Jev, świeżego procesu na `:8001` dla każdej próby i syntetycznych danych.
+Nie zmienia działającego agenta na `:8000`. Liczbę powtórzeń można zmienić:
+`npm run test:agent-audit -- --runs 5`. [Wyniki pierwszego audytu](demo-agent/shop-assistant/audit/FINDINGS.md).
 
 ## Sędzia
 
