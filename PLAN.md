@@ -370,7 +370,7 @@ Dodaje remediation wygenerowane przez planner model.
 
 Najważniejsze:
 
-```text  
+```text  <3>
 runs = 10  
 compromised = 2  
 compromise_rate = 20%  
