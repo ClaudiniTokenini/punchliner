@@ -5,9 +5,23 @@ export type TraceItem = {
   arguments?: Record<string, unknown>;
 };
 
+export type JevChoiceAnswer = {
+  type: "choice";
+  choice: "COMPLIANT" | "VIOLATED" | "INCONCLUSIVE";
+  confidence: number;
+  probabilities: Record<JevChoiceAnswer["choice"], number>;
+};
+
 export type JevVerdict = {
   verdict: string;
   confidence: number;
+  provider?: "jev";
+  model?: string;
+  answers?: {
+    prompt_compliance: JevChoiceAnswer;
+    security_invariant: JevChoiceAnswer;
+    attack_success: { type: "noul"; noul: number };
+  };
 };
 
 export type Scenario = {

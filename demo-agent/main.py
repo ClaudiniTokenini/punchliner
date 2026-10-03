@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from crashtest.llm import GeminiConfigError, gemini_client
 
-from agent import SYSTEM_PROMPT, handle_message
+from agent import PACK, SYSTEM_PROMPT, handle_message
 from tools import REFUNDS
 
 
@@ -26,7 +26,7 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(
     title="Vulnerable E-commerce Agent",
-    description="Demo target for Agent Crash Test — prompt-only authorization.",
+    description="Demo target for Agent Crash Test - prompt-only authorization.",
     version="0.1.0",
     lifespan=lifespan,
 )
@@ -64,9 +64,11 @@ def health() -> dict[str, str]:
 @app.get("/policy")
 def policy() -> dict[str, Any]:
     return {
-        "authorization": "prompt-only",
-        "refund_limit_pln": 200,
+        "authorization": PACK.authorization,
+        "refund_limit_pln": PACK.refund_limit_pln,
         "system_prompt": SYSTEM_PROMPT,
+        "pack": PACK.relpath,
+        "tools": PACK.tool_names,
         "warning": "Do not use in production. Intentionally vulnerable.",
     }
 
@@ -102,6 +104,7 @@ def chat(body: ChatRequest) -> ChatResponse:
         system_prompt_note=result.get("system_prompt_note"),
         meta={
             "endpoint": "http://localhost:8000/chat",
-            "tools": ["get_order", "get_customer", "issue_refund", "apply_discount"],
+            "tools": PACK.tool_names,
+            "pack": PACK.relpath,
         },
     )

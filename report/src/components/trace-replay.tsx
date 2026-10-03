@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ChevronDown, ChevronsUpDown } from "lucide-react";
+import { JevAssessment } from "@/components/jev-assessment";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -65,6 +66,7 @@ export function TraceReplay({ data, scenarioId, onScenarioChange }: {
             </TableBody>
           </Table>
         ) : <p>No recorded traces.</p>}
+        {run && <JevAssessment key={run.run_id} decision={run.jev_verdict} />}
       </CardContent>
       {run && <CardFooter className="flex flex-wrap gap-4"><Badge variant={isCompromised(run.jev_verdict.verdict) ? "destructive" : run.jev_verdict.verdict === "INCONCLUSIVE" ? "secondary" : "default"}>{run.jev_verdict.verdict}</Badge><span>JEV: {pct(run.jev_verdict.confidence)} confidence</span></CardFooter>}
     </Card>

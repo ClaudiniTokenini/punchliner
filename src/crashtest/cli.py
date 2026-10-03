@@ -21,14 +21,29 @@ from crashtest.config import (
     write_context,
     write_contract,
 )
+from crashtest.judge import JevError
 from crashtest.llm import (
     FALLBACK_QUESTIONS,
     GeminiConfigError,
     fetch_configure_questions,
     fetch_scenarios,
+    validate_configure_seed,
+)
+from crashtest.pack import (
+    DEFAULT_PACK_PATH,
+    AgentPack,
+    find_pack_dir,
+    load_pack,
 )
 from crashtest.runner import execute_suite
-from crashtest.schemas import CrashConfig, ExecutionConfig, GatesConfig, ModelsConfig, TargetConfig
+from crashtest.schemas import (
+    AgentPackConfig,
+    CrashConfig,
+    ExecutionConfig,
+    GatesConfig,
+    ModelsConfig,
+    TargetConfig,
+)
 from crashtest.target import TargetClient, TargetError
 
 app = typer.Typer(
@@ -44,22 +59,80 @@ def _root() -> Path:
     return Path.cwd()
 
 
-def _ask_gemini_questions(brief: str) -> list[dict]:
+def _brief(seed: str, notes: str) -> str:
+    text = seed.strip()
+    if notes.strip():
+        return f"{text}\nMust never: {notes.strip()}"
+    return text
+
+
+def _ask_gemini_questions(brief: str, agent_context: str = "") -> list[dict]:
     if ui.console.is_terminal:
         with ui.console.status("  Asking Gemini about your project...", spinner="dots"):
-            return fetch_configure_questions(brief)
-    return fetch_configure_questions(brief)
+            return fetch_configure_questions(brief, agent_context=agent_context)
+    return fetch_configure_questions(brief, agent_context=agent_context)
 
 
-def _ask_gemini_scenarios(summary: str) -> list[dict] | None:
+def _ask_gemini_scenarios(summary: str, agent_context: str = "") -> list[dict] | None:
     try:
         if ui.console.is_terminal:
             with ui.console.status("  Generating scenarios with Gemini...", spinner="dots"):
-                return fetch_scenarios(summary)
-        return fetch_scenarios(summary)
+                return fetch_scenarios(summary, agent_context=agent_context)
+        return fetch_scenarios(summary, agent_context=agent_context)
     except Exception as exc:  # noqa: BLE001 - template fallback
         ui.print_error(f"Scenario generation unavailable ({exc}). Using template.")
         return None
+
+
+def _ask_pack_path(root: Path, default: str) -> AgentPack:
+    spec = default
+    while True:
+        spec = Prompt.ask("Agent pack path?", default=spec)
+        found = find_pack_dir(spec, root)
+        if found is None:
+            ui.print_error(
+                f"No agent pack at {spec.strip()}.\n  Need context.json and tools.json."
+            )
+            continue
+        pack = load_pack(found, relpath=spec.strip())
+        ui.console.print(f"  pack   {pack.role}")
+        ui.console.print(f"  tools  {', '.join(pack.tool_names)}")
+        return pack
+
+
+def _align_seed_with_pack(seed: str, notes: str, pack: AgentPack) -> tuple[str, str]:
+    while True:
+        brief = _brief(seed, notes)
+        try:
+            if ui.console.is_terminal:
+                with ui.console.status(
+                    "  Checking description against the agent pack...",
+                    spinner="dots",
+                ):
+                    verdict = validate_configure_seed(brief, pack.digest())
+            else:
+                verdict = validate_configure_seed(brief, pack.digest())
+        except Exception as exc:  # noqa: BLE001 - configure must stay usable
+            ui.print_error(f"Seed check unavailable ({exc}). Continuing.")
+            return seed, notes
+        if verdict.get("ok", True):
+            return seed, notes
+        reason = verdict.get("reason") or "Description does not match the agent pack."
+        ui.print_error(reason)
+        if Confirm.ask("Continue anyway?", default=False):
+            return seed, notes
+        seed = Prompt.ask("Project in a few words?", default=seed)
+        notes = Prompt.ask(
+            "What must the agent never do, even if the user insists?",
+            default=notes,
+        )
+
+
+def _try_default_pack(root: Path) -> AgentPack | None:
+    found = find_pack_dir(DEFAULT_PACK_PATH, root)
+    if found is None:
+        return None
+    return load_pack(found, relpath=DEFAULT_PACK_PATH)
 
 
 def _configure(defaults: bool) -> None:
@@ -69,19 +142,27 @@ def _configure(defaults: bool) -> None:
     notes = ""
     answers: list[dict] = []
     generated: list[dict] | None = None
+    pack_snapshot: dict | None = None
+    pack: AgentPack | None = None
     if defaults:
         config = base
+        pack = _try_default_pack(root)
+        if pack is not None:
+            pack_snapshot = pack.snapshot()
+            seed = pack.role
     else:
-        seed = Prompt.ask("Project in a few words?", default=base.agent_role)
+        pack = _ask_pack_path(root, DEFAULT_PACK_PATH)
+        pack_snapshot = pack.snapshot()
+        seed = Prompt.ask("Project in a few words?", default=pack.role)
         notes = Prompt.ask(
             "What must the agent never do, even if the user insists?",
             default="",
         )
-        brief = seed.strip()
-        if notes.strip():
-            brief = f"{brief}\nMust never: {notes.strip()}"
+        seed, notes = _align_seed_with_pack(seed, notes, pack)
+        brief = _brief(seed, notes)
+        digest = pack.digest()
         try:
-            questions = _ask_gemini_questions(brief)
+            questions = _ask_gemini_questions(brief, digest)
         except GeminiConfigError as exc:
             ui.print_error(str(exc))
             raise typer.Exit(code=1) from None
@@ -105,6 +186,7 @@ def _configure(defaults: bool) -> None:
         )
         config = CrashConfig(
             agent_role=seed.strip(),
+            agent=AgentPackConfig(path=pack.relpath),
             target=TargetConfig(url=url),
             models=ModelsConfig(target=base.models.target),
             execution=ExecutionConfig(runs=run_count, max_turns=base.execution.max_turns),
@@ -113,12 +195,12 @@ def _configure(defaults: bool) -> None:
                 high_max_compromise_rate=base.gates.high_max_compromise_rate,
             ),
         )
-        summary = compile_context_summary(seed, answers, notes)
-        generated = _ask_gemini_scenarios(summary)
+        summary = compile_context_summary(seed, answers, notes, pack_snapshot=pack_snapshot)
+        generated = _ask_gemini_scenarios(summary, digest)
         if generated is not None and not generated:
             generated = None
 
-    ctx_path = write_context(seed, answers, root, notes=notes)
+    ctx_path = write_context(seed, answers, root, notes=notes, pack_snapshot=pack_snapshot)
     cfg_path, scn_path = write_contract(
         config,
         root,
@@ -188,7 +270,7 @@ def run_command(
             root=root,
             runs=runs,
         )
-    except TargetError as exc:
+    except (TargetError, JevError) as exc:
         ui.print_error(str(exc))
         raise typer.Exit(code=1) from None
     finally:

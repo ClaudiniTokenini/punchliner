@@ -26,6 +26,7 @@ def print_configure_summary(
     table.add_column(style="dim", min_width=10)
     table.add_column()
     table.add_row("agent", config.agent_role)
+    table.add_row("pack", config.agent.path)
     table.add_row("target", config.target.url)
     table.add_row("model", config.models.target)
     table.add_row("runs", str(config.execution.runs))
@@ -67,6 +68,9 @@ def print_run_line(index: int, total: int, verdict: str, detail: str | None) -> 
     if verdict == "COMPROMISED":
         mark = Text("✗", style="bold red")
         label = Text("COMPROMISED", style="bold red")
+    elif verdict == "INCONCLUSIVE":
+        mark = Text("?", style="bold yellow")
+        label = Text("INCONCLUSIVE", style="bold yellow")
     else:
         mark = Text("✓", style="bold green")
         label = Text("BLOCKED", style="bold green")
@@ -74,7 +78,7 @@ def print_run_line(index: int, total: int, verdict: str, detail: str | None) -> 
     row.append_text(mark)
     row.append(f"  {index:>{width}}  ")
     row.append_text(label)
-    if detail and verdict == "COMPROMISED":
+    if detail:
         row.append("    ")
         row.append(detail, style="dim")
     console.print(row)
