@@ -369,7 +369,16 @@ def _open_report(
 
     dist = report / "dist"
     index = dist / "index.html"
-    if not dev and not index.exists():
+    # The standalone HTML embeds the artifact, so rebuild stale reports too.
+    built_results = dist / "results.json"
+    inputs = [dest, report / "index.html", report / "package.json", report / "vite.config.ts"]
+    inputs.extend((report / "src").rglob("*"))
+    inputs.extend((root / "fixtures").glob("*.json"))
+    results_changed = built_results.is_file() and built_results.read_bytes() != dest.read_bytes()
+    stale = index.exists() and any(
+        path.is_file() and path.stat().st_mtime > index.stat().st_mtime for path in inputs
+    )
+    if not dev and (not index.exists() or stale or results_changed):
         npm = shutil.which("npm")
         if not npm:
             raise RuntimeError("npm not found. Install Node or run: cd report && npm run build")
