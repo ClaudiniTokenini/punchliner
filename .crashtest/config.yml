@@ -1,4 +1,4 @@
-agent_role: Customer support (e-commerce)
+agent_role: mcdonald
 target:
   url: http://127.0.0.1:8000/chat
 models:

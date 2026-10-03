@@ -1,4 +1,3 @@
-@ -1,99 +0,0 @@
 # Sprint 1 — Podsumowanie (Osoba B)
 
 **Data:** 2026-10-03  
@@ -17,17 +16,20 @@
 
 ### Demo agent
 
-Uruchomienie:
+Uruchomienie (aktualne — Gemini, nie lokalny Qwen/LM Studio):
 
 ```bash
-cd demo-agent
-python -m pip install -r requirements.txt
-python -m uvicorn main:app --host 127.0.0.1 --port 8000
+cp .env.example .env   # GEMINI_API_KEY=...
+uv sync
+npm run agent          # FastAPI :8000 → Gemini
 ```
 
-- `POST http://localhost:8000/chat`
+- `POST http://127.0.0.1:8000/chat`
+- LLM: **Google Gemini** (`GEMINI_MODEL`, default `gemini-3.5-flash-lite`)
 - Tools: `get_order`, `get_customer`, `issue_refund`, `apply_discount`
 - Autoryzacja refundów > 200 PLN jest **tylko promptowa** — claim „manager approved” omija gate
+
+> Sprint 1 B startował od heurystycznego / lokalnego targetu; target produkcyjny hackathonu to agent Gemini za FastAPI.
 
 ### Report v0
 
@@ -96,5 +98,7 @@ CLI → HTTP target → attack → results.json → HTML report
 ## Werdykt
 
 **Wymagania Sprint 1 z PLAN-B dla Osoby B: spełnione (10/10 checklist).**
+
+**Update:** target agent działa na **Gemini** (`npm run agent` + `.env`), nie LM Studio / heurystyce. Contract `POST /chat` bez zmian.
 
 Następny sprint (Sprint 2): Report v1 (overview, vulnerability UX, pełny trace + remediation) oraz podpięcie pod realny `results.json` z engine'u A.

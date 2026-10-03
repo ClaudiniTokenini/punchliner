@@ -12,9 +12,22 @@ import typer
 from rich.prompt import Confirm, FloatPrompt, IntPrompt, Prompt
 
 from crashtest import console as ui
-from crashtest.config import append_chat_turn, load_config, load_scenarios, new_chat_log, write_context, write_contract
-from crashtest.llm import FALLBACK_QUESTIONS, GeminiConfigError, fetch_configure_questions
-from crashtest.runner import execute
+from crashtest.config import (
+    append_chat_turn,
+    compile_context_summary,
+    load_config,
+    load_scenarios,
+    new_chat_log,
+    write_context,
+    write_contract,
+)
+from crashtest.llm import (
+    FALLBACK_QUESTIONS,
+    GeminiConfigError,
+    fetch_configure_questions,
+    fetch_scenarios,
+)
+from crashtest.runner import execute_suite
 from crashtest.schemas import CrashConfig, ExecutionConfig, GatesConfig, ModelsConfig, TargetConfig
 from crashtest.target import TargetClient, TargetError
 
@@ -38,20 +51,24 @@ def _ask_gemini_questions(brief: str) -> list[dict]:
     return fetch_configure_questions(brief)
 
 
-@app.command()
-def configure(
-    defaults: bool = typer.Option(
-        False,
-        "--defaults",
-        help="Write the contract with built-in defaults. No prompts.",
-    ),
-) -> None:
-    """Write .crashtest contract and interview the project into context.yml."""
+def _ask_gemini_scenarios(summary: str) -> list[dict] | None:
+    try:
+        if ui.console.is_terminal:
+            with ui.console.status("  Generating scenarios with Gemini...", spinner="dots"):
+                return fetch_scenarios(summary)
+        return fetch_scenarios(summary)
+    except Exception as exc:  # noqa: BLE001 - template fallback
+        ui.print_error(f"Scenario generation unavailable ({exc}). Using template.")
+        return None
+
+
+def _configure(defaults: bool) -> None:
     root = _root()
     base = CrashConfig()
     seed = base.agent_role
     notes = ""
     answers: list[dict] = []
+    generated: list[dict] | None = None
     if defaults:
         config = base
     else:
@@ -96,9 +113,43 @@ def configure(
                 high_max_compromise_rate=base.gates.high_max_compromise_rate,
             ),
         )
+        summary = compile_context_summary(seed, answers, notes)
+        generated = _ask_gemini_scenarios(summary)
+        if generated is not None and not generated:
+            generated = None
+
     ctx_path = write_context(seed, answers, root, notes=notes)
-    cfg_path, scn_path = write_contract(config, root)
+    cfg_path, scn_path = write_contract(
+        config,
+        root,
+        scenarios=generated,
+        force_scenarios=True,
+    )
     ui.print_configure_summary(config, cfg_path, scn_path, ctx_path)
+
+
+@app.command()
+def configure(
+    defaults: bool = typer.Option(
+        False,
+        "--defaults",
+        help="Write the contract with built-in defaults. No prompts.",
+    ),
+) -> None:
+    """Write .crashtest contract and interview the project into context.yml."""
+    _configure(defaults)
+
+
+@app.command("init")
+def init_command(
+    defaults: bool = typer.Option(
+        False,
+        "--defaults",
+        help="Write the contract with built-in defaults. No prompts.",
+    ),
+) -> None:
+    """Alias for configure (Sprint 2 milestone name)."""
+    _configure(defaults)
 
 
 @app.command("run")
@@ -122,18 +173,17 @@ def run_command(
         config = load_config(root)
         scenarios = load_scenarios(root)
     except FileNotFoundError:
-        ui.print_error("No .crashtest/config.yml found.\n  Next: npm run configure")
+        ui.print_error("No .crashtest/config.yml found.\n  Next: npm run init")
         raise typer.Exit(code=1) from None
     if not scenarios:
         ui.print_error("No scenarios in .crashtest/scenarios.yml.")
         raise typer.Exit(code=1)
 
-    scenario = scenarios[0]
     target = TargetClient(config.target.url)
     try:
-        results, results_path = execute(
+        results, results_path = execute_suite(
             config=config,
-            scenario=scenario,
+            scenarios=scenarios,
             target=target,
             root=root,
             runs=runs,

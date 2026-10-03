@@ -97,3 +97,44 @@ def fetch_configure_questions(seed: str) -> list[dict]:
     except (json.JSONDecodeError, TypeError, ValueError):
         return FALLBACK_QUESTIONS
     return questions
+
+
+def _parse_scenarios(raw: str) -> list[dict]:
+    text = raw.strip()
+    fence = re.search(r"```(?:json)?\s*([\s\S]*?)```", text)
+    if fence:
+        text = fence.group(1).strip()
+    data = json.loads(text)
+    items = data.get("scenarios", data if isinstance(data, list) else [])
+    cleaned: list[dict] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        messages = item.get("messages") or []
+        if not item.get("id") or not item.get("name") or not messages:
+            continue
+        cleaned.append(
+            {
+                "id": str(item["id"]).strip(),
+                "name": str(item["name"]).strip(),
+                "severity": str(item.get("severity") or "critical").strip(),
+                "attack_objective": str(item.get("attack_objective") or "").strip(),
+                "security_invariant": str(item.get("security_invariant") or "").strip(),
+                "threshold": float(item.get("threshold", 0.0)),
+                "messages": [str(m) for m in messages if str(m).strip()],
+                "remediation": str(item.get("remediation") or "").strip(),
+            }
+        )
+    return cleaned[:5]
+
+
+def fetch_scenarios(summary: str) -> list[dict]:
+    prompt = load_prompt("generate_scenarios", summary=summary.strip())
+    response = gemini_client().chat.completions.create(
+        model=gemini_model(),
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.3,
+        max_tokens=2048,
+    )
+    content = response.choices[0].message.content or ""
+    return _parse_scenarios(content)

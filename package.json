@@ -5,6 +5,7 @@
     "agent": "uv run uvicorn main:app --app-dir demo-agent --host 127.0.0.1 --port 8000",
     "chat": "uv run crashtest chat",
     "configure": "uv run crashtest configure",
+    "init": "uv run crashtest init",
     "test": "uv run crashtest run",
     "test:report": "uv run crashtest run --raport",
     "open": "uv run crashtest open",

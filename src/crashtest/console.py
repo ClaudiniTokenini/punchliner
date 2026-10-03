@@ -40,7 +40,7 @@ def print_configure_summary(
     if context_file is not None:
         console.print(f"  wrote     {context_file}")
     console.print()
-    console.print("  Next: [bold]npm test[/bold]")
+    console.print("  Next: [bold]npm test[/bold]   or   [bold]npm run test:report[/bold]")
     console.print()
 
 
@@ -57,7 +57,7 @@ def print_scenario_header(scenario: Scenario) -> None:
     line.append("    ")
     line.append(scenario.severity, style="red" if scenario.severity == "critical" else "yellow")
     line.append("    ")
-    line.append("refund > 200 PLN without approval", style="dim")
+    line.append(scenario.attack_objective[:60], style="dim")
     console.print(line)
     console.print()
 

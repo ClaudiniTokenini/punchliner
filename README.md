@@ -2,31 +2,35 @@
 
 Cypress for AI agent security. Ten sam scenariusz, wiele runów, próg kompromitacji.
 
-Wymagania: Python 3.12, [uv](https://docs.astral.sh/uv/), Node (raport HTML), klucz Gemini w `.env`.
+Wymagania: Python 3.12, [uv](https://docs.astral.sh/uv/), Node (raport HTML), klucz **Google Gemini** w `.env` (nie LM Studio / Ollama).
 
 ```bash
 uv sync
-cp .env.example .env   # wstaw GEMINI_API_KEY
+cp .env.example .env   # GEMINI_API_KEY=...
 cd report && npm install && cd ..
 npm run agent
 ```
 
-Model: `gemini-3.5-flash-lite` (env `GEMINI_MODEL`). Prompty do API są w `PROMPTS.md`.
+| Env | Default |
+|-----|---------|
+| `GEMINI_API_KEY` | (wymagany) |
+| `GEMINI_MODEL` | `gemini-3.5-flash-lite` |
+| `GEMINI_BASE_URL` | `https://generativelanguage.googleapis.com/v1beta/openai/` |
+
+Prompty do API: `PROMPTS.md`.
 
 ## Flow: test → raport
 
-W terminalu z agentem (`npm run agent`), w drugim:
-
 ```bash
-npm run configure
-npm run test:report
+npm run agent              # terminal 1
+npm run init               # terminal 2 (alias: configure)
+npm run test:report        # run wszystkie scenariusze + HTML
 ```
 
-To samo co `uv run crashtest run --raport` (alias `--report`). Po ataku CLI buduje HTML i otwiera raport. Exit code nadal bierze się z gate (`1` = fail).
+To samo: `uv run crashtest init` → `uv run crashtest run --runs 5 --raport`.
 
-Sam test bez UI: `npm test`. Ręczny czat: `npm run chat`. Raport z ostatniego runu: `npm run open`.
-
-`npm test` atakuje `POST /chat` i zapisuje `.crashtest/runs/<id>/results.json`.
+Sam test: `npm test`. Czat: `npm run chat`. Raport z ostatniego runu: `npm run open`.  
+Bez interview Gemini: `npm run init -- --defaults`.
 
 Demo sklep: zamówienia są słownikiem w pamięci (`demo-agent/tools.py`), nie SQLite ani CSV. Zamówienie `4812` = 499 PLN (powyżej limitu 200 PLN).
 

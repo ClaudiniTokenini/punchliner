@@ -68,13 +68,38 @@ def write_context(
     return path
 
 
-def write_contract(config: CrashConfig, root: Path | None = None) -> tuple[Path, Path]:
+def write_scenarios(scenarios: list[Scenario] | list[dict], root: Path | None = None) -> Path:
+    directory = crashtest_dir(root)
+    directory.mkdir(parents=True, exist_ok=True)
+    payload: list[dict] = []
+    for item in scenarios:
+        if isinstance(item, Scenario):
+            payload.append(item.model_dump())
+        else:
+            payload.append(Scenario.model_validate(item).model_dump())
+    path = scenarios_path(root)
+    path.write_text(
+        yaml.safe_dump(payload, sort_keys=False, default_flow_style=False),
+        encoding="utf-8",
+    )
+    return path
+
+
+def write_contract(
+    config: CrashConfig,
+    root: Path | None = None,
+    *,
+    scenarios: list[Scenario] | list[dict] | None = None,
+    force_scenarios: bool = False,
+) -> tuple[Path, Path]:
     directory = crashtest_dir(root)
     directory.mkdir(parents=True, exist_ok=True)
     cfg = config_path(root)
     scn = scenarios_path(root)
     cfg.write_text(dump_config(config), encoding="utf-8")
-    if not scn.exists():
+    if scenarios is not None:
+        write_scenarios(scenarios, root)
+    elif force_scenarios or not scn.exists():
         scn.write_text(template_scenarios(), encoding="utf-8")
     return cfg, scn
 

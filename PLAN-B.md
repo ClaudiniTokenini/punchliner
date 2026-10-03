@@ -1,18 +1,19 @@
-@ -1,292 +0,0 @@
 # PLAN OSOBY B  
 ## Demo / Report / Integration
 
 Rola: `vulnerable agent → report → trace UX → GitHub Actions → demo`  
-Definition of Done: `crashtest open` pokazuje atrakcyjny raport i da się przeprowadzić cały scenariusz demo.
+Definition of Done: `crashtest open` / `crashtest run --raport` pokazuje atrakcyjny raport i da się przeprowadzić cały scenariusz demo.
+
+**Stack LLM (aktualne):** demo agent i `configure` = **Google Gemini** (`GEMINI_API_KEY`, `GEMINI_MODEL=gemini-3.5-flash-lite` w `.env`). Nie Ollama / LM Studio. Szczegóły: `PLAN.md` §1 + `README.md`.
 
 Kontrakt z Osobą A: UI czyta wyłącznie  
 `.crashtest/runs/<run-id>/results.json`  
 Do czasu gotowego engine'u pracuję na `fixtures/results.failed.json`.
 
 Stack po mojej stronie:
-- FastAPI — podatny demo agent
+- FastAPI — podatny demo agent (LLM = Gemini)
 - React + Vite + Tailwind + Recharts — static HTML report
-- GitHub Actions — CI gate + upload artifact
+- GitHub Actions — CI gate + upload artifact (`GEMINI_API_KEY` w secrets)
 
 ---
 
@@ -143,7 +144,7 @@ Cel: prawdziwy failed CI job + downloadable report.
 
 ### GitHub Actions
 
-- [ ] Workflow: checkout → install → (opcjonalnie ollama) → `crashtest run --ci`
+- [ ] Workflow: checkout → install → `GEMINI_API_KEY` secret → `crashtest run --ci`
 - [ ] Exit code 1 przy przekroczonym threshold
 - [ ] Upload artifact:
 
@@ -154,7 +155,7 @@ crashtest-report/
 └── assets/
 ```
 
-- [ ] `JEV_API_KEY` z secrets (gdy A podłączy Jev)
+- [ ] `GEMINI_API_KEY` w secrets (demo agent / configure)
 - [ ] Screenshot-ready failed job w Actions UI
 
 ### Packaging reportu
@@ -242,7 +243,7 @@ Pełna historia demo w < kilka minut.
 
 ### Disclosure (regulamin)
 
-- [ ] Jawnie: Ollama, Qwen3, LiteLLM, Jev (+ inne użyte API)
+- [ ] Jawnie: Google Gemini (`gemini-3.5-flash-lite`), Gemini OpenAI-compatible API (+ Jev jeśli użyte)
 
 ### H22–H24 — buffer
 
