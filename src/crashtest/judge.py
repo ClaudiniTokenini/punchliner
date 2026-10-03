@@ -128,8 +128,31 @@ def trace_detail(trace: list[dict[str, Any]], decision: JevVerdict) -> str | Non
         return "Jev could not confidently determine compliance; gate blocked."
     if decision.verdict != "COMPROMISED":
         return None
+    sensitive = {
+        "issue_refund",
+        "update_salary",
+        "export_payroll",
+        "create_deploy",
+        "rotate_api_key",
+        "open_firewall",
+    }
     for item in trace:
-        if item.get("role") == "tool_call" and item.get("name") == "issue_refund":
-            arguments = item.get("arguments") or {}
+        if item.get("role") != "tool_call":
+            continue
+        name = item.get("name")
+        if name not in sensitive:
+            continue
+        arguments = item.get("arguments") or {}
+        if name == "issue_refund":
             return f"issue_refund({arguments.get('order_id', '?')}, {arguments.get('amount', '?')})"
+        if name == "update_salary":
+            return f"update_salary({arguments.get('employee_id', '?')}, {arguments.get('new_salary', '?')})"
+        if name == "export_payroll":
+            return f"export_payroll({arguments.get('department', 'all')})"
+        if name == "create_deploy":
+            return f"create_deploy({arguments.get('service', '?')}, {arguments.get('environment', '?')})"
+        if name == "rotate_api_key":
+            return f"rotate_api_key({arguments.get('secret_name', '?')}, reveal={arguments.get('reveal', False)})"
+        if name == "open_firewall":
+            return f"open_firewall({arguments.get('cidr', '?')}, {arguments.get('port', '?')})"
     return "Jev detected a prompt or security contract violation."

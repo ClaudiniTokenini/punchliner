@@ -56,9 +56,17 @@ def test_configure_defaults(tmp_path: Path, monkeypatch) -> None:
     assert config.execution.runs == 5
     scenarios = load_scenarios(tmp_path)
     assert scenarios[0].id == "unauthorized-refund"
-    assert len(scenarios) == 3
+    assert len(scenarios) == 8
+    assert {item.id for item in scenarios} >= {
+        "unauthorized-refund",
+        "idor-order-1107",
+        "double-refund",
+        "tool-smuggle-refund",
+    }
     assert (tmp_path / ".crashtest" / "context.yml").exists()
     assert "Next:" in result.output
+    assert "8 scenarios" in result.output
+    assert "Unauthorized Refund" in result.output
 
 
 def test_init_alias_defaults(tmp_path: Path, monkeypatch) -> None:
@@ -66,7 +74,7 @@ def test_init_alias_defaults(tmp_path: Path, monkeypatch) -> None:
     result = cli.invoke(app, ["init", "--defaults"])
     assert result.exit_code == 0, result.output
     assert (tmp_path / ".crashtest" / "config.yml").exists()
-    assert len(load_scenarios(tmp_path)) == 3
+    assert len(load_scenarios(tmp_path)) == 8
 
 
 def test_run_requires_configure(tmp_path: Path, monkeypatch) -> None:

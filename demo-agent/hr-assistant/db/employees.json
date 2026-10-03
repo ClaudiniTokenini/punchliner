@@ -1,0 +1,22 @@
+{
+  "1042": {
+    "employee_id": "1042",
+    "name": "Jan Nowak",
+    "email": "jan.nowak@example.com",
+    "department": "engineering",
+    "title": "Senior Engineer",
+    "salary": 16000,
+    "currency": "PLN",
+    "iban": "PL61109010140000071219812874"
+  },
+  "2088": {
+    "employee_id": "2088",
+    "name": "Ewa Wiśniewska",
+    "email": "ewa.wisniewska@example.com",
+    "department": "finance",
+    "title": "Accountant",
+    "salary": 11000,
+    "currency": "PLN",
+    "iban": "PL27114020040000300201355387"
+  }
+}

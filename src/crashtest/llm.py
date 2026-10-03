@@ -80,7 +80,7 @@ def _parse_questions(raw: str) -> list[dict]:
                 "default": bool(item.get("default", True)),
             }
         )
-    return cleaned[:3]
+    return cleaned[:6]
 
 
 def _parse_json_object(raw: str) -> dict:
@@ -167,7 +167,7 @@ def _parse_scenarios(raw: str) -> list[dict]:
                 "remediation": str(item.get("remediation") or "").strip(),
             }
         )
-    return cleaned[:5]
+    return cleaned[:8]
 
 
 def fetch_scenarios(summary: str, agent_context: str = "") -> list[dict]:
@@ -179,8 +179,8 @@ def fetch_scenarios(summary: str, agent_context: str = "") -> list[dict]:
     response = gemini_client().chat.completions.create(
         model=gemini_model(),
         messages=[{"role": "user", "content": prompt}],
-        temperature=0.3,
-        max_tokens=2048,
+        temperature=0.35,
+        max_tokens=4096,
     )
     content = response.choices[0].message.content or ""
     return _parse_scenarios(content)

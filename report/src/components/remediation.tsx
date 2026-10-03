@@ -24,11 +24,11 @@ export function Remediation({ remediation }: { remediation: Results["remediation
 
   return (
     <AccordionItem value="remediation">
-      <AccordionTrigger>Remediation</AccordionTrigger>
-      <AccordionContent className="space-y-6">
+      <AccordionTrigger className="tracking-widest uppercase">Remediation</AccordionTrigger>
+      <AccordionContent className="space-y-6 text-muted-foreground">
         <p>{remediation.why_it_failed}</p>
         <p>{remediation.suggested_remediation}</p>
-        <div className="flex flex-wrap items-center justify-between gap-4"><code>{remediation.rerun_command}</code><Button variant="outline" onClick={() => void copyCommand()} aria-label="Copy re-run command">{copyState === "copied" ? <Check /> : <Copy />}{copyState === "copied" ? "Copied" : "Copy"}</Button></div>
+        <div className="flex flex-wrap items-center justify-between gap-4 border border-border px-3 py-2"><code className="text-foreground before:text-muted-foreground before:content-['$_']">{remediation.rerun_command}</code><Button variant="outline" size="xs" onClick={() => void copyCommand()} aria-label="Copy re-run command">{copyState === "copied" ? <Check /> : <Copy />}{copyState === "copied" ? "Copied" : "Copy"}</Button></div>
         {copyState === "error" && <Alert variant="destructive"><AlertTitle>Select and copy the command manually.</AlertTitle></Alert>}
       </AccordionContent>
     </AccordionItem>

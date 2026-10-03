@@ -3,8 +3,8 @@ import { ChevronDown, ChevronsUpDown } from "lucide-react";
 import { JevAssessment } from "@/components/jev-assessment";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardAction, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { DashBar } from "@/components/terminal";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatTrace, isCompromised, pct } from "@/lib/report";
@@ -26,13 +26,14 @@ export function TraceReplay({ data, scenarioId, onScenarioChange }: {
   const verdicts = [...new Set(data.runs.map((item) => item.verdict))];
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle><h2>Trace replay</h2></CardTitle>
-        <CardAction><Button variant="ghost" size="icon" onClick={() => setExpandResults(!expandResults)} aria-label={expandResults ? "Collapse results" : "Expand results"} aria-pressed={expandResults}><ChevronsUpDown /></Button></CardAction>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="flex flex-wrap gap-4">
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-6">
+        <h2 className="text-3xl font-bold">Trace replay</h2>
+        <Button variant="ghost" size="icon-sm" onClick={() => setExpandResults(!expandResults)} aria-label={expandResults ? "Collapse results" : "Expand results"} aria-pressed={expandResults}><ChevronsUpDown /></Button>
+      </div>
+      <DashBar />
+      <div className="space-y-6">
+        <div className="flex flex-wrap gap-4 text-xs">
           <Select value={scenarioId} onValueChange={(value) => { onScenarioChange(value ?? "all"); setSelectedId(""); }}>
             <SelectTrigger aria-label="Filter traces by scenario"><SelectValue>{scenarioName}</SelectValue></SelectTrigger>
             <SelectContent>
@@ -53,23 +54,24 @@ export function TraceReplay({ data, scenarioId, onScenarioChange }: {
         </div>
         {run ? (
           <Table className="table-fixed">
-            <TableHeader><TableRow><TableHead className="w-12">#</TableHead><TableHead className="w-28">Role</TableHead><TableHead>Event</TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow className="hover:bg-transparent"><TableHead className="w-12 text-[0.625rem]">#</TableHead><TableHead className="w-28 text-[0.625rem]">Role</TableHead><TableHead className="text-[0.625rem]">Event</TableHead></TableRow></TableHeader>
             <TableBody>
               {run.trace.map((item, index) => (
                 <TableRow key={`${run.run_id}-${index}`}>
-                  <TableCell>{index + 1}</TableCell>
-                  <TableCell>{item.role.replaceAll("_", " ")}</TableCell>
-                  <TableCell><TraceEvent item={item} expanded={expandResults} /></TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{String(index + 1).padStart(2, "0")}</TableCell>
+                  <TableCell className={`text-[0.625rem] font-bold tracking-widest uppercase ${item.role === "tool_call" && isCompromised(run.verdict) ? "text-destructive" : "text-muted-foreground"}`}>{item.role.replaceAll("_", " ")}</TableCell>
+                  <TableCell className="text-xs"><TraceEvent item={item} expanded={expandResults} /></TableCell>
                 </TableRow>
               ))}
-              {!run.trace.length && <TableRow><TableCell colSpan={3}>No trace events recorded.</TableCell></TableRow>}
+              {!run.trace.length && <TableRow><TableCell colSpan={3} className="text-muted-foreground">No trace events recorded.</TableCell></TableRow>}
             </TableBody>
           </Table>
-        ) : <p>No recorded traces.</p>}
+        ) : <p className="text-muted-foreground">No recorded traces.</p>}
         {run && <JevAssessment key={run.run_id} decision={run.jev_verdict} />}
-      </CardContent>
-      {run && <CardFooter className="flex flex-wrap gap-4"><Badge variant={isCompromised(run.jev_verdict.verdict) ? "destructive" : run.jev_verdict.verdict === "INCONCLUSIVE" ? "secondary" : "default"}>{run.jev_verdict.verdict}</Badge><span>JEV: {pct(run.jev_verdict.confidence)} confidence</span></CardFooter>}
-    </Card>
+      </div>
+      <DashBar />
+      {run && <div className="flex flex-wrap items-center gap-4 text-xs"><Badge variant={isCompromised(run.jev_verdict.verdict) ? "destructive" : run.jev_verdict.verdict === "INCONCLUSIVE" ? "secondary" : "default"}>{run.jev_verdict.verdict}</Badge><span className="text-muted-foreground">JEV: {pct(run.jev_verdict.confidence)} confidence</span></div>}
+    </div>
   );
 }
 

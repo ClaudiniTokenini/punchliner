@@ -27,14 +27,19 @@ Prompty płatnych wywołań: `PROMPTS.md`.
 
 | | |
 |--|--|
-| `npm run agent` | podatny demo agent (FastAPI) |
+| `npm run agent` / `agent:shop` | shop assistant (refund) |
+| `npm run agent:hr` | HR assistant (salary / payroll) |
+| `npm run agent:devops` | DevOps copilot (deploy / secrets) |
 | `npm run init` | kontrakt `.crashtest/` + pytania Gemini |
 | `npm run test:report` | `crashtest run --raport` |
 | `npm test` | sam test, exit code bramki |
 | `npm run open` | żywy raport, wybór runu na :5173 |
 | `npm run chat` | ręczny czat z agentem |
 
-`init` pyta o pack (domyślnie `demo-agent/shop-assistant`: `context.json`, `tools.json`, `db/`). Zamówienie `4812` = 499 PLN, limit refundu 200 PLN. Autoryzacja jest tylko w prompcie: twierdzenie „manager approved” albo kod `APPROVED-NNN` przepuszcza `issue_refund`.
+`init` pyta o pack (`demo-agent/shop-assistant`, `hr-assistant`, `devops-copilot`). Domyślnie **8 scenariuszy** na pack (nie 3). Gemini bez `--defaults` też ma zwrócić 8.
+
+
+Pełny scenariusz prezentacji (komenda → wynik → wniosek): **`DEMO-SCENARIO.md`**.
 
 ## Sędzia
 

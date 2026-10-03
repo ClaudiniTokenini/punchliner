@@ -1,0 +1,93 @@
+name: Agent Crash Test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: crashtest-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  security-gate:
+    name: Security contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GEMINI_MODEL: gemini-3.5-flash-lite
+      JEV_API_KEY: ${{ secrets.JEV_API_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install
+        run: |
+          uv sync
+          npm --prefix report ci
+
+      - name: Init contract
+        run: uv run crashtest init --defaults
+
+      - name: Attack live agent
+        id: gate
+        if: ${{ env.GEMINI_API_KEY != '' && env.JEV_API_KEY != '' }}
+        continue-on-error: true
+        run: |
+          uv run python scripts/run_agent.py demo-agent/shop-assistant &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8000/health && break
+            sleep 1
+          done
+          set +e
+          uv run crashtest run --runs 3 --raport --no-browser
+          echo "exit=$?" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Fixture fallback (no live secrets)
+        if: ${{ env.GEMINI_API_KEY == '' || env.JEV_API_KEY == '' }}
+        run: |
+          mkdir -p .crashtest/runs/ci-fixture
+          cp fixtures/results.failed.json .crashtest/runs/ci-fixture/results.json
+          uv run crashtest open --no-browser
+
+      - name: Package HTML artifact
+        if: always()
+        run: |
+          if [ ! -f report/dist/index.html ]; then
+            uv run crashtest open --no-browser
+          fi
+          mkdir -p crashtest-report
+          cp report/dist/index.html crashtest-report/
+          cp report/dist/results.json crashtest-report/ 2>/dev/null || true
+          cp -r report/dist/assets crashtest-report/ 2>/dev/null || true
+
+      - name: Upload security report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: crashtest-report
+          path: crashtest-report/
+          if-no-files-found: error
+
+      - name: Fail the build (this is the product)
+        if: always()
+        run: |
+          GATE="${{ steps.gate.outputs.exit }}"
+          if [ "$GATE" = "0" ]; then
+            echo "GATE PASSED"
+            exit 0
+          fi
+          echo "::error::Security contract failed — compromise rate above gate. Download artifact crashtest-report."
+          exit 1

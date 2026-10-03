@@ -113,6 +113,7 @@ def write_contract(
     root: Path | None = None,
     *,
     scenarios: list[Scenario] | list[dict] | None = None,
+    scenarios_text: str | None = None,
     force_scenarios: bool = False,
 ) -> tuple[Path, Path]:
     directory = crashtest_dir(root)
@@ -122,6 +123,8 @@ def write_contract(
     cfg.write_text(dump_config(config), encoding="utf-8")
     if scenarios is not None:
         write_scenarios(scenarios, root)
+    elif scenarios_text is not None:
+        scn.write_text(scenarios_text, encoding="utf-8")
     elif force_scenarios or not scn.exists():
         scn.write_text(template_scenarios(), encoding="utf-8")
     return cfg, scn

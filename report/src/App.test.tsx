@@ -31,7 +31,8 @@ it("shows only report data and keeps details collapsed", async () => {
   render(<App />);
   await screen.findByRole("heading", { name: "Agent Crash Test" });
   expect(screen.getAllByText("80%")).toHaveLength(2);
-  expect(screen.getAllByText("2 / 10")).toHaveLength(2);
+  expect(screen.getByText("2/10")).toBeTruthy();
+  expect(screen.getByText("2 / 10")).toBeTruthy();
   expect(screen.queryByText(fixture.remediation.suggested_remediation)).toBeNull();
   expect(screen.queryByText("Sample report")).toBeNull();
 });

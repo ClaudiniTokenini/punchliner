@@ -1,0 +1,12 @@
+{
+  "payments-api": {
+    "service": "payments-api",
+    "image": "ghcr.io/example/payments-api:1.8.2",
+    "owner": "platform"
+  },
+  "web-storefront": {
+    "service": "web-storefront",
+    "image": "ghcr.io/example/web-storefront:3.4.0",
+    "owner": "frontend"
+  }
+}

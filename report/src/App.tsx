@@ -1,15 +1,11 @@
 import { useEffect, useState } from "react";
-import { ArrowDownToLine } from "lucide-react";
+import { ArrowDownToLine, Check, X } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Alert, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CloseButton, DashBar, DotRow, Window } from "@/components/terminal";
 import { Scenarios } from "@/components/scenarios";
 import { TraceReplay } from "@/components/trace-replay";
 import { Remediation } from "@/components/remediation";
@@ -42,7 +38,7 @@ export default function App() {
     }
   }
 
-  if (!report) return <main className="mx-auto max-w-7xl space-y-12 p-12" aria-label="Loading report" aria-busy="true"><Skeleton className="h-12 w-64" /><Skeleton className="h-48 w-full" /></main>;
+  if (!report) return <main className="mx-auto max-w-7xl p-12 text-sm text-muted-foreground" aria-label="Loading report" aria-busy="true">&gt; loading report<span className="animate-pulse">_</span></main>;
 
   const { data, source } = report;
   const failed = data.summary.status === "FAILED" || !data.gate.passed;
@@ -54,56 +50,77 @@ export default function App() {
   }
 
   return (
-    <main className="mx-auto max-w-7xl px-6 py-12 md:px-12 md:py-16">
-      <Tabs value={tab} onValueChange={(value) => setTab(String(value))} className="gap-12">
-        <header className="flex flex-wrap items-center justify-between gap-6">
-          <div className="flex flex-wrap items-center gap-6"><CardTitle><h1>Agent Crash Test</h1></CardTitle><Badge variant={failed ? "destructive" : "default"}>{failed ? "FAILED" : "PASSED"}</Badge></div>
-          <div className="flex flex-wrap items-center gap-6">
+    <main className="mx-auto max-w-7xl px-6 py-10 md:px-12">
+      <Tabs value={tab} onValueChange={(value) => setTab(String(value))} className="gap-0">
+        <header className="mb-6 flex flex-wrap items-center justify-between gap-6">
+          <div className="flex flex-wrap items-center gap-4">
+            <h1 className="text-2xl font-bold">Agent Crash Test</h1>
+            <span aria-hidden="true" className="h-px w-12 bg-muted-foreground" />
+            <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-[0.625rem] font-bold tracking-widest uppercase ${failed ? "bg-destructive text-background" : "bg-foreground text-background"}`}>
+              {failed ? <X className="size-3" /> : <Check className="size-3" />}{failed ? "FAILED" : "PASSED"}
+            </span>
+            {source !== "results.json" && <span className="text-xs text-muted-foreground">Sample report</span>}
+          </div>
+          <div className="flex flex-wrap items-center gap-4">
             {report.runs.length > 0 && report.runId && (
               <Select value={report.runId} onValueChange={(value) => void choose(value)}>
-                <SelectTrigger aria-label="Run"><SelectValue>{formatRunLabel(report.runs.find((run) => run.id === report.runId) ?? report.runs[0])}</SelectValue></SelectTrigger>
+                <SelectTrigger aria-label="Run" className="h-10 border-border px-3 text-xs"><SelectValue>{formatRunLabel(report.runs.find((run) => run.id === report.runId) ?? report.runs[0])}</SelectValue></SelectTrigger>
                 <SelectContent>
                   {report.runs.map((run) => <SelectItem key={run.id} value={run.id}>{formatRunLabel(run)}</SelectItem>)}
                 </SelectContent>
               </Select>
             )}
-            <Button variant="outline" onClick={() => downloadReport(data)}><ArrowDownToLine />Export JSON</Button>
+            <Button variant="secondary" onClick={() => downloadReport(data)}><ArrowDownToLine />Export JSON</Button>
           </div>
         </header>
-        {source !== "results.json" && <Alert><AlertTitle>Sample report</AlertTitle></Alert>}
-        <TabsList variant="line" aria-label="Report sections"><TabsTrigger value="overview">Overview</TabsTrigger><TabsTrigger value="traces">Trace replay</TabsTrigger></TabsList>
-        <TabsContent value="overview" className="space-y-12">
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            <Metric label="Resilience" value={pct(data.summary.resilience_score)}><Progress value={data.summary.resilience_score * 100} aria-label="Resilience" /></Metric>
-            <Metric label="Critical" value={String(data.summary.critical_count)} />
-            <Metric label="High" value={String(data.summary.high_count)} />
-            <Metric label="Compromised" value={`${data.summary.compromised_runs} / ${data.summary.total_runs}`} />
-          </div>
-          {(data.summary.inconclusive_runs ?? 0) > 0 && <Alert><AlertTitle>{data.summary.inconclusive_runs} inconclusive</AlertTitle></Alert>}
-          <Scenarios scenarios={data.scenarios} searchable={data.scenarios.length > 1} onReplay={replayScenario} />
-          <Accordion multiple>
-            <AccordionItem value="gate">
-              <AccordionTrigger>Gate thresholds</AccordionTrigger>
-              <AccordionContent>
-                <Table>
-                  <TableHeader><TableRow><TableHead>Severity</TableHead><TableHead>Observed</TableHead><TableHead>Allowed</TableHead></TableRow></TableHeader>
-                  <TableBody>
-                    <TableRow><TableCell>Critical</TableCell><TableCell>{pct(data.gate.observed_critical_compromise_rate)}</TableCell><TableCell>{pct(data.gate.critical_max_compromise_rate)}</TableCell></TableRow>
-                    <TableRow><TableCell>High</TableCell><TableCell>{highRate === null ? "Not tested" : pct(highRate)}</TableCell><TableCell>{pct(data.gate.high_max_compromise_rate)}</TableCell></TableRow>
-                    <TableRow><TableCell>Exit code</TableCell><TableCell colSpan={2}>{data.gate.exit_code}</TableCell></TableRow>
-                  </TableBody>
-                </Table>
-              </AccordionContent>
-            </AccordionItem>
-            <Remediation remediation={data.remediation} />
-          </Accordion>
+
+        <div className="flex items-end justify-between px-2">
+          <TabsList aria-label="Report sections" className="h-auto gap-1 bg-transparent p-0">
+            <TabsTrigger value="overview" className="h-9 border-border px-5 text-[0.75rem] normal-case tracking-normal data-active:bg-muted data-active:text-foreground">Overview</TabsTrigger>
+            <TabsTrigger value="traces" className="h-9 border-border px-5 text-[0.75rem] normal-case tracking-normal data-active:bg-muted data-active:text-foreground">
+              Trace replay<span aria-hidden="true" className="bg-foreground/10 px-1.5 text-[0.625rem] text-muted-foreground">{data.scenarios.length}</span>
+            </TabsTrigger>
+          </TabsList>
+          <CloseButton />
+        </div>
+
+        <TabsContent value="overview" className="space-y-6">
+          <Window>
+            <div className="grid gap-x-16 gap-y-6 lg:grid-cols-2">
+              <DotRow label="Resilience" value={pct(data.summary.resilience_score)} critical={failed} />
+              <DotRow label="High" value={String(data.summary.high_count)} critical={data.summary.high_count > 0} />
+              <DotRow label="Compromised" value={`${data.summary.compromised_runs}/${data.summary.total_runs}`} critical={data.summary.compromised_runs > 0} />
+              <DotRow label="Critical" value={String(data.summary.critical_count)} critical={data.summary.critical_count > 0} />
+            </div>
+            {(data.summary.inconclusive_runs ?? 0) > 0 && <p className="mt-6 text-sm text-muted-foreground">{data.summary.inconclusive_runs} inconclusive</p>}
+            <DashBar className="mt-10" />
+          </Window>
+
+          <Window>
+            <Scenarios scenarios={data.scenarios} searchable={data.scenarios.length > 1} onReplay={replayScenario} />
+          </Window>
+
+          <Window>
+            <Accordion multiple>
+              <AccordionItem value="gate">
+                <AccordionTrigger className="tracking-widest uppercase">Gate thresholds</AccordionTrigger>
+                <AccordionContent>
+                  <Table>
+                    <TableHeader><TableRow><TableHead>Severity</TableHead><TableHead>Observed</TableHead><TableHead>Allowed</TableHead></TableRow></TableHeader>
+                    <TableBody>
+                      <TableRow><TableCell>Critical</TableCell><TableCell className={data.gate.observed_critical_compromise_rate > data.gate.critical_max_compromise_rate ? "text-destructive" : ""}>{pct(data.gate.observed_critical_compromise_rate)}</TableCell><TableCell>{pct(data.gate.critical_max_compromise_rate)}</TableCell></TableRow>
+                      <TableRow><TableCell>High</TableCell><TableCell>{highRate === null ? "Not tested" : pct(highRate)}</TableCell><TableCell>{pct(data.gate.high_max_compromise_rate)}</TableCell></TableRow>
+                      <TableRow><TableCell>Exit code</TableCell><TableCell colSpan={2} className={data.gate.exit_code ? "text-destructive" : ""}>{data.gate.exit_code}</TableCell></TableRow>
+                    </TableBody>
+                  </Table>
+                </AccordionContent>
+              </AccordionItem>
+              <Remediation remediation={data.remediation} />
+            </Accordion>
+          </Window>
         </TabsContent>
-        <TabsContent value="traces"><TraceReplay data={data} scenarioId={scenarioId} onScenarioChange={setScenarioId} /></TabsContent>
+        <TabsContent value="traces"><Window><TraceReplay data={data} scenarioId={scenarioId} onScenarioChange={setScenarioId} /></Window></TabsContent>
       </Tabs>
     </main>
   );
-}
-
-function Metric({ label, value, children }: { label: string; value: string; children?: React.ReactNode }) {
-  return <Card><CardHeader><CardTitle>{label}</CardTitle></CardHeader><CardContent className="space-y-6"><CardTitle>{value}</CardTitle>{children}</CardContent></Card>;
 }

@@ -148,11 +148,16 @@ def _configure(defaults: bool) -> None:
     pack_snapshot: dict | None = None
     pack: AgentPack | None = None
     if defaults:
-        config = base
         pack = _try_default_pack(root)
         if pack is not None:
             pack_snapshot = pack.snapshot()
             seed = pack.role
+            config = CrashConfig(
+                agent_role=pack.role,
+                agent=AgentPackConfig(path=pack.relpath),
+            )
+        else:
+            config = base
     else:
         pack = _ask_pack_path(root, DEFAULT_PACK_PATH)
         pack_snapshot = pack.snapshot()
@@ -203,14 +208,27 @@ def _configure(defaults: bool) -> None:
         if generated is not None and not generated:
             generated = None
 
+    pack_scenarios_text = None
+    if generated is None and pack is not None:
+        pack_scn = pack.scenarios_file()
+        if pack_scn is not None:
+            pack_scenarios_text = pack_scn.read_text(encoding="utf-8")
+
     ctx_path = write_context(seed, answers, root, notes=notes, pack_snapshot=pack_snapshot)
     cfg_path, scn_path = write_contract(
         config,
         root,
         scenarios=generated,
+        scenarios_text=pack_scenarios_text,
         force_scenarios=True,
     )
-    ui.print_configure_summary(config, cfg_path, scn_path, ctx_path)
+    ui.print_configure_summary(
+        config,
+        cfg_path,
+        scn_path,
+        ctx_path,
+        scenarios=load_scenarios(root),
+    )
 
 
 @app.command()
@@ -251,6 +269,11 @@ def run_command(
         "--raport",
         help="After the run, build and open the HTML report.",
     ),
+    no_browser: bool = typer.Option(
+        False,
+        "--no-browser",
+        help="With --raport, copy/build the report without opening a browser (CI).",
+    ),
 ) -> None:
     """Attack the target and score the security gate."""
     root = _root()
@@ -281,7 +304,7 @@ def run_command(
 
     if report:
         try:
-            _open_report(root, src=results_path)
+            _open_report(root, src=results_path, no_browser=no_browser)
         except Exception as exc:  # noqa: BLE001 - still return gate exit code
             ui.print_error(f"Report failed: {exc}")
 

@@ -2,12 +2,16 @@
   "name": "agent-crash-test",
   "private": true,
   "scripts": {
-    "agent": "uv run uvicorn main:app --app-dir demo-agent --host 127.0.0.1 --port 8000",
+    "agent": "uv run python scripts/run_agent.py demo-agent/shop-assistant",
+    "agent:shop": "uv run python scripts/run_agent.py demo-agent/shop-assistant",
+    "agent:hr": "uv run python scripts/run_agent.py demo-agent/hr-assistant",
+    "agent:devops": "uv run python scripts/run_agent.py demo-agent/devops-copilot",
     "chat": "uv run crashtest chat",
     "configure": "uv run crashtest configure",
     "init": "uv run crashtest init",
     "test": "uv run crashtest run",
     "test:report": "uv run crashtest run --raport",
+    "test:report:ci": "uv run crashtest run --raport --no-browser",
     "open": "uv run crashtest open",
     "report": "npm --prefix report run dev"
   }

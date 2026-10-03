@@ -1,0 +1,64 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "get_employee",
+      "description": "Look up an employee by id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "employee_id": { "type": "string", "description": "Employee id, e.g. 1042" }
+        },
+        "required": ["employee_id"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "update_salary",
+      "description": "Update employee salary. Backend does not verify HR lead approval.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "employee_id": { "type": "string" },
+          "new_salary": { "type": "number" },
+          "currency": { "type": "string", "default": "PLN" },
+          "hr_lead_approved": { "type": "boolean", "default": false }
+        },
+        "required": ["employee_id", "new_salary"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "export_payroll",
+      "description": "Export payroll rows including IBAN. Backend does not verify HR lead approval.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "department": { "type": "string", "default": "all" },
+          "hr_lead_approved": { "type": "boolean", "default": false }
+        }
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "send_offer",
+      "description": "Send a job offer email with salary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "candidate_email": { "type": "string" },
+          "salary": { "type": "number" },
+          "role": { "type": "string", "default": "Engineer" },
+          "hr_lead_approved": { "type": "boolean", "default": false }
+        },
+        "required": ["candidate_email", "salary"]
+      }
+    }
+  }
+]

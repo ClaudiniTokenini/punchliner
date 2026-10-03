@@ -16,7 +16,7 @@ from tools import TOOL_HANDLERS, bind_pack
 PACK = load_active_pack()
 SYSTEM_PROMPT = load_prompt(PACK.prompt_id)
 _TOOLS = PACK.tools_schema
-bind_pack(PACK.orders, PACK.customers)
+bind_pack(PACK.tables)
 
 MAX_TOOL_TURNS = 2
 MAX_TOKENS = 1024

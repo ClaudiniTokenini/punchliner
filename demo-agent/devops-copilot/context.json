@@ -1,0 +1,12 @@
+{
+  "name": "devops-copilot",
+  "role": "Internal DevOps / platform copilot",
+  "prompt_id": "target_devops_agent",
+  "authorization": "prompt-only",
+  "tools": [
+    "read_repo_file",
+    "create_deploy",
+    "rotate_api_key",
+    "open_firewall"
+  ]
+}

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +14,7 @@ PACK_ENV = "AGENT_PACK"
 DEFAULT_PACK_PATH = "demo-agent/shop-assistant"
 CONTEXT_NAME = "context.json"
 TOOLS_NAME = "tools.json"
+SCENARIOS_NAME = "scenarios.yml"
 
 
 class PackError(FileNotFoundError):
@@ -32,8 +33,9 @@ class AgentPack:
     tool_names: list[str]
     tools_schema: list[dict[str, Any]]
     context: dict[str, Any]
-    orders: dict[str, Any]
-    customers: dict[str, Any]
+    tables: dict[str, dict[str, Any]] = field(default_factory=dict)
+    orders: dict[str, Any] = field(default_factory=dict)
+    customers: dict[str, Any] = field(default_factory=dict)
 
     def digest(self) -> str:
         lines = [
@@ -47,10 +49,9 @@ class AgentPack:
             lines.append(f"refund_limit_pln: {self.refund_limit_pln}")
         if self.tool_names:
             lines.append("tools: " + ", ".join(self.tool_names))
-        if self.orders:
-            lines.append("orders: " + ", ".join(str(key) for key in self.orders))
-        if self.customers:
-            lines.append("customers: " + ", ".join(str(key) for key in self.customers))
+        for table_name, rows in sorted(self.tables.items()):
+            if rows:
+                lines.append(f"{table_name}: " + ", ".join(str(key) for key in rows))
         return "\n".join(lines)
 
     def snapshot(self) -> dict[str, Any]:
@@ -62,8 +63,13 @@ class AgentPack:
             "authorization": self.authorization,
             "refund_limit_pln": self.refund_limit_pln,
             "tools": list(self.tool_names),
+            "tables": {name: [str(key) for key in rows] for name, rows in self.tables.items()},
             "orders": [str(key) for key in self.orders],
         }
+
+    def scenarios_file(self) -> Path | None:
+        path = self.path / SCENARIOS_NAME
+        return path if path.is_file() else None
 
 
 def repo_root() -> Path:
@@ -139,6 +145,17 @@ def _load_json(path: Path, default: Any) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _load_tables(db_dir: Path) -> dict[str, dict[str, Any]]:
+    tables: dict[str, dict[str, Any]] = {}
+    if not db_dir.is_dir():
+        return tables
+    for path in sorted(db_dir.glob("*.json")):
+        raw = _load_json(path, {})
+        if isinstance(raw, dict):
+            tables[path.stem] = raw
+    return tables
+
+
 def load_pack(path: Path, relpath: str | None = None) -> AgentPack:
     if not is_pack_dir(path):
         raise PackError(f"No agent pack at {path}. Need context.json and tools.json.")
@@ -148,12 +165,9 @@ def load_pack(path: Path, relpath: str | None = None) -> AgentPack:
     tools_schema = _load_json(path / TOOLS_NAME, [])
     if not isinstance(tools_schema, list):
         raise PackError(f"Invalid {TOOLS_NAME} in {path}.")
-    orders = _load_json(path / "db" / "orders.json", {})
-    customers = _load_json(path / "db" / "customers.json", {})
-    if not isinstance(orders, dict):
-        orders = {}
-    if not isinstance(customers, dict):
-        customers = {}
+    tables = _load_tables(path / "db")
+    orders = tables.get("orders") or {}
+    customers = tables.get("customers") or {}
     named = context.get("tools") or []
     tool_names = [str(item) for item in named] if isinstance(named, list) else []
     if not tool_names:
@@ -179,6 +193,7 @@ def load_pack(path: Path, relpath: str | None = None) -> AgentPack:
         tool_names=tool_names,
         tools_schema=tools_schema,
         context=context,
+        tables=tables,
         orders=orders,
         customers=customers,
     )

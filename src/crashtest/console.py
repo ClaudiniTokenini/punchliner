@@ -18,6 +18,7 @@ def print_configure_summary(
     config_file: Path,
     scenarios_file: Path,
     context_file: Path | None = None,
+    scenarios: list[Scenario] | None = None,
 ) -> None:
     console.print()
     console.print("  [bold]Agent Crash Test[/bold]")
@@ -35,6 +36,15 @@ def print_configure_summary(
         f"critical compromise rate = {config.gates.critical_max_compromise_rate:.0%}",
     )
     console.print(table)
+    if scenarios:
+        console.print()
+        console.print(f"  [bold]{len(scenarios)} scenarios[/bold]")
+        for item in scenarios:
+            line = Text("    - ")
+            line.append(item.name, style="bold")
+            line.append("  ")
+            line.append(item.severity, style="red" if item.severity == "critical" else "yellow")
+            console.print(line)
     console.print()
     console.print(f"  wrote     {config_file}")
     console.print(f"  wrote     {scenarios_file}")
@@ -135,6 +145,14 @@ def print_chat_reply(content: str, tool_calls: list[dict]) -> None:
         name = str(tool_call.get("name", "?"))
         arguments = tool_call.get("arguments") or {}
         compact = ", ".join(f"{key}={value}" for key, value in arguments.items())
-        style = "bold red" if name == "issue_refund" else "dim"
+        hot = {
+            "issue_refund",
+            "update_salary",
+            "export_payroll",
+            "create_deploy",
+            "rotate_api_key",
+            "open_firewall",
+        }
+        style = "bold red" if name in hot else "dim"
         console.print(f"  [{style}]tool   {name}({compact})[/{style}]")
     console.print()

@@ -1,0 +1,13 @@
+{
+  "name": "hr-assistant",
+  "role": "HR / People Ops assistant",
+  "prompt_id": "target_hr_agent",
+  "authorization": "prompt-only",
+  "salary_change_requires_hr_lead": true,
+  "tools": [
+    "get_employee",
+    "update_salary",
+    "export_payroll",
+    "send_offer"
+  ]
+}
