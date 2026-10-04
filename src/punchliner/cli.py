@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 import socket
 import subprocess
@@ -9,7 +10,9 @@ import sys
 import time
 import webbrowser
 from pathlib import Path
+from urllib.error import URLError
 from urllib.parse import quote
+from urllib.request import urlopen
 
 import typer
 from rich.prompt import Confirm, FloatPrompt, IntPrompt, Prompt
@@ -379,11 +382,32 @@ def _port_open(host: str, port: int) -> bool:
         return sock.connect_ex((host, port)) == 0
 
 
+def _runs_dir(root: Path) -> Path:
+    return (root / ".punchliner" / "runs").resolve()
+
+
+def _latest_results(root: Path) -> Path | None:
+    runs = _runs_dir(root)
+    if not runs.is_dir():
+        return None
+    newest: Path | None = None
+    newest_mtime = -1.0
+    for child in runs.iterdir():
+        file = child / "results.json"
+        if not file.is_file():
+            continue
+        mtime = file.stat().st_mtime
+        if mtime > newest_mtime:
+            newest = file
+            newest_mtime = mtime
+    return newest
+
+
 def _run_id_from_results(root: Path, src: Path | None) -> str | None:
     if src is None:
         return None
     try:
-        runs = (root / ".punchliner" / "runs").resolve()
+        runs = _runs_dir(root)
         path = src.resolve()
     except OSError:
         return None
@@ -392,34 +416,63 @@ def _run_id_from_results(root: Path, src: Path | None) -> str | None:
     return path.parent.name
 
 
-def _report_url(run_id: str | None) -> str:
-    base = f"http://{REPORT_HOST}:{REPORT_PORT}/"
+def _api_run_ids(host: str, port: int) -> list[str] | None:
+    try:
+        with urlopen(f"http://{host}:{port}/api/runs", timeout=0.5) as response:
+            data = json.loads(response.read().decode())
+    except (URLError, TimeoutError, json.JSONDecodeError, OSError, ValueError):
+        return None
+    if not isinstance(data, list):
+        return None
+    ids: list[str] = []
+    for item in data:
+        if isinstance(item, dict) and isinstance(item.get("id"), str):
+            ids.append(item["id"])
+    return ids
+
+
+def _free_port(host: str, start: int, span: int = 20) -> int:
+    for port in range(start, start + span):
+        if not _port_open(host, port):
+            return port
+    raise RuntimeError(f"No free port in {start}-{start + span - 1}.")
+
+
+def _report_url(run_id: str | None, port: int = REPORT_PORT) -> str:
+    base = f"http://{REPORT_HOST}:{port}/"
     if not run_id:
         return base
     return f"{base}?run={quote(run_id)}"
 
 
-def _start_report_server(report: Path) -> subprocess.Popen[bytes]:
+def _start_report_server(report: Path, port: int | None = None) -> subprocess.Popen[bytes]:
     npm = shutil.which("npm")
     if not npm:
         raise RuntimeError("npm not found. Install Node, then run: cd report && npm install")
+    args = [npm, "run", "dev"]
+    if port is not None:
+        args.extend(["--", "--port", str(port)])
     return subprocess.Popen(
-        [npm, "run", "dev"],
+        args,
         cwd=report,
         shell=sys.platform == "win32",
     )
 
 
-def _wait_for_report(proc: subprocess.Popen[bytes], timeout: float = 30.0) -> None:
+def _wait_for_report(
+    proc: subprocess.Popen[bytes],
+    port: int = REPORT_PORT,
+    timeout: float = 30.0,
+) -> None:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if proc.poll() is not None:
             raise RuntimeError("Report server exited before it was ready.")
-        if _port_open(REPORT_HOST, REPORT_PORT):
+        if _port_open(REPORT_HOST, port):
             return
         time.sleep(0.2)
     proc.terminate()
-    raise RuntimeError(f"Report server did not start on port {REPORT_PORT}.")
+    raise RuntimeError(f"Report server did not start on port {port}.")
 
 
 def _hold_server(proc: subprocess.Popen[bytes]) -> None:
@@ -439,17 +492,30 @@ def _open_report(
     src: Path | None = None,
     no_browser: bool = False,
 ) -> str:
-    """Open the live report. Start Vite when nothing is listening on :5173."""
+    """Open the live report. Reuse Vite only when it can see this run."""
     report = root / "report"
     if not report.is_dir():
         raise FileNotFoundError("Missing report/ folder.")
+    if src is None:
+        src = _latest_results(root)
+    run_id = _run_id_from_results(root, src)
 
-    url = _report_url(_run_id_from_results(root, src))
     started = None
-    if not _port_open(REPORT_HOST, REPORT_PORT):
-        started = _start_report_server(report)
-        _wait_for_report(started)
+    port = REPORT_PORT
+    ids = _api_run_ids(REPORT_HOST, port) if _port_open(REPORT_HOST, port) else None
+    server_ok = ids is not None and (run_id in ids if run_id else True)
+    if not server_ok:
+        if _port_open(REPORT_HOST, port):
+            port = _free_port(REPORT_HOST, REPORT_PORT + 1)
+            started = _start_report_server(report, port=port)
+        else:
+            started = _start_report_server(report)
+            port = REPORT_PORT
+        _wait_for_report(started, port=port)
 
+    url = _report_url(run_id, port=port)
+    if src is not None:
+        ui.console.print(f"  results  {src}")
     ui.console.print(f"  report   {url}")
     if not no_browser:
         webbrowser.open(url)
@@ -466,9 +532,14 @@ def open_command(
         help="Start the report server without opening a browser.",
     ),
 ) -> None:
-    """Open the live report and pick a run from .punchliner/runs."""
+    """Open the live report for the latest run in .punchliner/runs."""
+    root = _root()
+    src = _latest_results(root)
+    if src is None:
+        ui.print_error("No .punchliner/runs yet.\n  Next: npm run punchliner:punch")
+        raise typer.Exit(code=1)
     try:
-        _open_report(_root(), no_browser=no_browser)
+        _open_report(root, src=src, no_browser=no_browser)
     except (FileNotFoundError, RuntimeError) as exc:
         ui.print_error(str(exc))
         raise typer.Exit(code=1) from None

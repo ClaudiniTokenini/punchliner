@@ -34,7 +34,7 @@ Prompty płatnych wywołań: `PROMPTS.md`.
 | `npm run punchliner:report` | `punchliner run --raport` |
 | `npm run punchliner:punch` | sam test, exit code bramki |
 | `npm run punchliner:audit` | 17 ataków × 2 próby na izolowanym shop-agencie + legalny refund |
-| `npm run punchliner:open` | żywy raport, wybór runu na :5173 |
+| `npm run punchliner:open` | najnowszy run z `.punchliner/runs/` na żywo |
 | `npm run punchliner:chat` | ręczny czat z agentem |
 
 `punchliner:init` pyta o pack (`demo-agent/shop-assistant`, `hr-assistant`, `devops-copilot`). Domyślnie **8 scenariuszy** na pack (nie 3). Gemini bez `--defaults` też ma zwrócić 8.

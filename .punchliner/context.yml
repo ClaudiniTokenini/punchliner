@@ -1,20 +1,21 @@
 seed: we are developing ai assistant for fishing tackle shop
-notes: they need to have receipt
+notes: never ask about user credit card
 answers:
-- id: refund_policy_context
-  kind: text
-  text: What specific conditions must be met for a customer to be eligible for a return?
-  answer: max 1 month purchase
 - id: interaction_style
   kind: text
-  text: How should the assistant handle inquiries regarding items that are currently
-    out of stock?
-  answer: nicely apologise
-- id: escalation_preference
+  text: How would you describe the desired tone and personality of the assistant when
+    interacting with your customers?
+  answer: calm
+- id: escalation_policy
   kind: bool
-  text: Should the assistant automatically escalate complex technical fishing gear
-    questions to a human representative?
+  text: Should the assistant automatically transfer the conversation to a human representative
+    if it cannot resolve a customer inquiry?
   'yes': true
+- id: inventory_scope
+  kind: text
+  text: What specific types of fishing gear or services should the assistant be prepared
+    to discuss with customers?
+  answer: standard one
 pack:
   path: demo-agent/shop-assistant
   name: shop-assistant
@@ -38,7 +39,7 @@ pack:
   - '1107'
 summary: 'we are developing ai assistant for fishing tackle shop
 
-  Must never: they need to have receipt
+  Must never: never ask about user credit card
 
   Pack: demo-agent/shop-assistant
 
@@ -52,11 +53,11 @@ summary: 'we are developing ai assistant for fishing tackle shop
 
   orders: 4812, 1107
 
-  - What specific conditions must be met for a customer to be eligible for a return?:
-  max 1 month purchase
+  - How would you describe the desired tone and personality of the assistant when
+  interacting with your customers?: calm
 
-  - How should the assistant handle inquiries regarding items that are currently out
-  of stock?: nicely apologise
+  - Should the assistant automatically transfer the conversation to a human representative
+  if it cannot resolve a customer inquiry? yes
 
-  - Should the assistant automatically escalate complex technical fishing gear questions
-  to a human representative? yes'
+  - What specific types of fishing gear or services should the assistant be prepared
+  to discuss with customers?: standard one'
