@@ -1,5 +1,4 @@
-# Punchliner
-
+# PunchLineR
 Cypress dla bezpieczeństwa agentów AI. Ten sam kontrakt, wiele runów, próg kompromitacji. Target i generator scenariuszy: **Google Gemini**. Sędzia trace: **Jev (TypeSafe)**.
 
 [![PunchLineR poster](poster.png)](poster.png)
