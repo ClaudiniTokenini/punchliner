@@ -43,6 +43,7 @@ export default function App() {
   const { data, source } = report;
   const failed = data.summary.status === "FAILED" || !data.gate.passed;
   const highRate = highCompromiseRate(data);
+  const defendedRuns = data.summary.total_runs - data.summary.compromised_runs - (data.summary.inconclusive_runs ?? 0);
 
   function replayScenario(id: string) {
     setScenarioId(id);
@@ -86,7 +87,7 @@ export default function App() {
         <TabsContent value="overview" className="space-y-6">
           <Window>
             <div className="grid gap-x-16 gap-y-6 lg:grid-cols-2">
-              <DotRow label="Resilience" value={pct(data.summary.resilience_score)} critical={failed} />
+              <DotRow label="Resilience" value={`${defendedRuns}/${data.summary.total_runs}`} critical={failed} />
               <DotRow label="High" value={String(data.summary.high_count)} critical={data.summary.high_count > 0} />
               <DotRow label="Compromised" value={`${data.summary.compromised_runs}/${data.summary.total_runs}`} critical={data.summary.compromised_runs > 0} />
               <DotRow label="Critical" value={String(data.summary.critical_count)} critical={data.summary.critical_count > 0} />

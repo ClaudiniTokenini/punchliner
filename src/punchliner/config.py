@@ -1,4 +1,4 @@
-"""Load and write .crashtest/config.yml and scenarios.yml."""
+"""Load and write .punchliner/config.yml and scenarios.yml."""
 
 from __future__ import annotations
 
@@ -8,34 +8,34 @@ from pathlib import Path
 
 import yaml
 
-from crashtest.schemas import CrashConfig, Scenario
+from punchliner.schemas import PunchConfig, Scenario
 
 CONFIG_NAME = "config.yml"
 SCENARIOS_NAME = "scenarios.yml"
 CONTEXT_NAME = "context.yml"
 
 
-def crashtest_dir(root: Path | None = None) -> Path:
-    return (root or Path.cwd()) / ".crashtest"
+def punchliner_dir(root: Path | None = None) -> Path:
+    return (root or Path.cwd()) / ".punchliner"
 
 
 def config_path(root: Path | None = None) -> Path:
-    return crashtest_dir(root) / CONFIG_NAME
+    return punchliner_dir(root) / CONFIG_NAME
 
 
 def context_path(root: Path | None = None) -> Path:
-    return crashtest_dir(root) / CONTEXT_NAME
+    return punchliner_dir(root) / CONTEXT_NAME
 
 
 def scenarios_path(root: Path | None = None) -> Path:
-    return crashtest_dir(root) / SCENARIOS_NAME
+    return punchliner_dir(root) / SCENARIOS_NAME
 
 
 def template_scenarios() -> str:
     return (Path(__file__).parent / "templates" / SCENARIOS_NAME).read_text(encoding="utf-8")
 
 
-def dump_config(config: CrashConfig) -> str:
+def dump_config(config: PunchConfig) -> str:
     return yaml.safe_dump(config.model_dump(), sort_keys=False, default_flow_style=False)
 
 
@@ -82,7 +82,7 @@ def write_context(
     notes: str = "",
     pack_snapshot: dict | None = None,
 ) -> Path:
-    directory = crashtest_dir(root)
+    directory = punchliner_dir(root)
     directory.mkdir(parents=True, exist_ok=True)
     snapshot = pack_snapshot or {}
     payload = {
@@ -98,7 +98,7 @@ def write_context(
 
 
 def write_scenarios(scenarios: list[Scenario] | list[dict], root: Path | None = None) -> Path:
-    directory = crashtest_dir(root)
+    directory = punchliner_dir(root)
     directory.mkdir(parents=True, exist_ok=True)
     payload: list[dict] = []
     for item in scenarios:
@@ -115,14 +115,14 @@ def write_scenarios(scenarios: list[Scenario] | list[dict], root: Path | None = 
 
 
 def write_contract(
-    config: CrashConfig,
+    config: PunchConfig,
     root: Path | None = None,
     *,
     scenarios: list[Scenario] | list[dict] | None = None,
     scenarios_text: str | None = None,
     force_scenarios: bool = False,
 ) -> tuple[Path, Path]:
-    directory = crashtest_dir(root)
+    directory = punchliner_dir(root)
     directory.mkdir(parents=True, exist_ok=True)
     cfg = config_path(root)
     scn = scenarios_path(root)
@@ -136,13 +136,13 @@ def write_contract(
     return cfg, scn
 
 
-def load_config(root: Path | None = None) -> CrashConfig:
+def load_config(root: Path | None = None) -> PunchConfig:
     path = config_path(root)
     if not path.exists():
         raise FileNotFoundError(str(path))
     with path.open(encoding="utf-8") as fh:
         raw = yaml.safe_load(fh) or {}
-    return CrashConfig.model_validate(raw)
+    return PunchConfig.model_validate(raw)
 
 
 def load_scenarios(root: Path | None = None) -> list[Scenario]:
@@ -157,7 +157,7 @@ def load_scenarios(root: Path | None = None) -> list[Scenario]:
 
 
 def new_chat_log(root: Path | None = None) -> Path:
-    directory = crashtest_dir(root) / "chat"
+    directory = punchliner_dir(root) / "chat"
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / f"{datetime.now(UTC).strftime('%Y%m%d-%H%M%S')}.jsonl"
     path.touch()

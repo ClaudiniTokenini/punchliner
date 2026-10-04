@@ -1,4 +1,4 @@
-"""CLI: crashtest configure / run / chat / open."""
+"""CLI: punchliner configure / run / chat / open."""
 
 from __future__ import annotations
 
@@ -14,8 +14,8 @@ from urllib.parse import quote
 import typer
 from rich.prompt import Confirm, FloatPrompt, IntPrompt, Prompt
 
-from crashtest import console as ui
-from crashtest.config import (
+from punchliner import console as ui
+from punchliner.config import (
     append_chat_turn,
     compile_context_summary,
     load_config,
@@ -24,33 +24,33 @@ from crashtest.config import (
     write_context,
     write_contract,
 )
-from crashtest.judge import JevError
-from crashtest.llm import (
+from punchliner.judge import JevError
+from punchliner.llm import (
     FALLBACK_QUESTIONS,
     GeminiConfigError,
     fetch_configure_questions,
     fetch_scenarios,
     validate_configure_seed,
 )
-from crashtest.pack import (
+from punchliner.pack import (
     DEFAULT_PACK_PATH,
     AgentPack,
     find_pack_dir,
     load_pack,
 )
-from crashtest.runner import execute_suite
-from crashtest.schemas import (
+from punchliner.runner import execute_suite
+from punchliner.schemas import (
     AgentPackConfig,
-    CrashConfig,
+    PunchConfig,
     ExecutionConfig,
     GatesConfig,
     ModelsConfig,
     TargetConfig,
 )
-from crashtest.target import TargetClient, TargetError
+from punchliner.target import TargetClient, TargetError
 
 app = typer.Typer(
-    name="crashtest",
+    name="punchliner",
     no_args_is_help=True,
     add_completion=False,
     pretty_exceptions_show_locals=False,
@@ -154,7 +154,7 @@ def _try_default_pack(root: Path) -> AgentPack | None:
 
 def _configure(defaults: bool) -> None:
     root = _root()
-    base = CrashConfig()
+    base = PunchConfig()
     seed = base.agent_role
     notes = ""
     answers: list[dict] = []
@@ -166,7 +166,7 @@ def _configure(defaults: bool) -> None:
         if pack is not None:
             pack_snapshot = pack.snapshot()
             seed = pack.role
-            config = CrashConfig(
+            config = PunchConfig(
                 agent_role=pack.role,
                 agent=AgentPackConfig(path=pack.relpath),
             )
@@ -199,7 +199,7 @@ def _configure(defaults: bool) -> None:
             "Max critical compromise rate?",
             default=base.gates.critical_max_compromise_rate,
         )
-        config = CrashConfig(
+        config = PunchConfig(
             agent_role=seed.strip(),
             agent=AgentPackConfig(path=pack.relpath),
             target=TargetConfig(url=url),
@@ -246,7 +246,7 @@ def configure(
         help="Write the contract with built-in defaults. No prompts.",
     ),
 ) -> None:
-    """Write .crashtest contract and interview the project into context.yml."""
+    """Write .punchliner contract and interview the project into context.yml."""
     _configure(defaults)
 
 
@@ -288,10 +288,10 @@ def run_command(
         config = load_config(root)
         scenarios = load_scenarios(root)
     except FileNotFoundError:
-        ui.print_error("No .crashtest/config.yml found.\n  Next: npm run init")
+        ui.print_error("No .punchliner/config.yml found.\n  Next: npm run punchliner:init")
         raise typer.Exit(code=1) from None
     if not scenarios:
-        ui.print_error("No scenarios in .crashtest/scenarios.yml.")
+        ui.print_error("No scenarios in .punchliner/scenarios.yml.")
         raise typer.Exit(code=1)
 
     target = TargetClient(config.target.url)
@@ -383,7 +383,7 @@ def _run_id_from_results(root: Path, src: Path | None) -> str | None:
     if src is None:
         return None
     try:
-        runs = (root / ".crashtest" / "runs").resolve()
+        runs = (root / ".punchliner" / "runs").resolve()
         path = src.resolve()
     except OSError:
         return None
@@ -466,7 +466,7 @@ def open_command(
         help="Start the report server without opening a browser.",
     ),
 ) -> None:
-    """Open the live report and pick a run from .crashtest/runs."""
+    """Open the live report and pick a run from .punchliner/runs."""
     try:
         _open_report(_root(), no_browser=no_browser)
     except (FileNotFoundError, RuntimeError) as exc:

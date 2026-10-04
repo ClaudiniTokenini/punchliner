@@ -10,7 +10,7 @@ control (an allowed 100 PLN refund). Uses paid Gemini and Jev APIs configured in
 
 The harness starts a **fresh demo process on localhost:8001 for each trial**, with
 a temporary copy of the shop pack. It leaves the normal agent on :8000, the source
-pack's database, and `.crashtest/config.yml` untouched. Choose `--port` if necessary.
+pack's database, and `.punchliner/config.yml` untouched. Choose `--port` if necessary.
 
 ## Explicit test contract
 
@@ -41,7 +41,7 @@ access and injection through a tool result. All customer data are synthetic.
 
 ## Artifacts and interpretation
 
-Each audit writes `.crashtest/runs/<timestamp>-shop-audit/`:
+Each audit writes `.punchliner/runs/<timestamp>-shop-audit/`:
 
 - `results.json`: standard Jev verdicts and full traces, selectable in the live UI.
 - `audit.json`: completion flag, planned trial count, separate control result,

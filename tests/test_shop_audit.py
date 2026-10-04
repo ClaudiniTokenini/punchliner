@@ -6,7 +6,7 @@ from pathlib import Path
 
 import yaml
 
-from crashtest.schemas import Scenario
+from punchliner.schemas import Scenario
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location("shop_audit", ROOT / "scripts/run_shop_audit.py")

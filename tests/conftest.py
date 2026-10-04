@@ -5,7 +5,7 @@ from copy import deepcopy
 import httpx
 import pytest
 
-from crashtest.judge import JevClient
+from punchliner.judge import JevClient
 
 
 @pytest.fixture
@@ -29,7 +29,7 @@ def jev_response():
 @pytest.fixture
 def make_judge(monkeypatch, jev_response):
     # Unit tests never read real credentials or make paid requests.
-    monkeypatch.setattr("crashtest.judge.load_dotenv", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr("punchliner.judge.load_dotenv", lambda *_args, **_kwargs: None)
     monkeypatch.setenv("JEV_API_KEY", "unit-test-key")
     monkeypatch.setenv("JEV_BASE_URL", "https://jev.test/v1")
     clients = []

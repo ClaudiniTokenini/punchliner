@@ -8,9 +8,9 @@ from typing import Any
 
 from openai import OpenAI
 
-from crashtest.llm import DEFAULT_MODEL, gemini_client, gemini_model
-from crashtest.pack import load_active_pack
-from crashtest.prompts import load_prompt
+from punchliner.llm import DEFAULT_MODEL, gemini_client, gemini_model
+from punchliner.pack import load_active_pack
+from punchliner.prompts import load_prompt
 from tools import TOOL_HANDLERS, bind_pack
 
 PACK = load_active_pack()

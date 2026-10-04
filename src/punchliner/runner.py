@@ -6,9 +6,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
 
-from crashtest.judge import JevClient, trace_detail
-from crashtest.schemas import (
-    CrashConfig,
+from punchliner.judge import JevClient, trace_detail
+from punchliner.schemas import (
+    PunchConfig,
     Gate,
     JevVerdict,
     Remediation,
@@ -19,7 +19,7 @@ from crashtest.schemas import (
     Summary,
     TraceItem,
 )
-from crashtest.target import TargetClient, TargetError
+from punchliner.target import TargetClient, TargetError
 
 
 class Printer(Protocol):
@@ -57,7 +57,7 @@ class NullPrinter:
 
 class RichPrinter:
     def __init__(self) -> None:
-        from crashtest import console as ui
+        from punchliner import console as ui
 
         self._ui = ui
 
@@ -146,7 +146,7 @@ def run_once(
 
 def build_results(
     *,
-    config: CrashConfig,
+    config: PunchConfig,
     scenario_runs: list[tuple[Scenario, list[RunResult]]],
 ) -> Results:
     scenario_summaries: list[ScenarioSummary] = []
@@ -240,14 +240,14 @@ def build_results(
                 if remediations
                 else "Keep backend authorization checks for sensitive tools."
             ),
-            rerun_command="npm run test:report",
+            rerun_command="npm run punchliner:report",
         ),
     )
 
 
 def execute(
     *,
-    config: CrashConfig,
+    config: PunchConfig,
     scenario: Scenario,
     target: TargetClient,
     root: Path,
@@ -270,7 +270,7 @@ def execute(
 
 def execute_suite(
     *,
-    config: CrashConfig,
+    config: PunchConfig,
     scenarios: list[Scenario],
     target: TargetClient,
     root: Path,
@@ -323,7 +323,7 @@ def execute_suite(
             judge.close()
 
     results = build_results(config=config, scenario_runs=scenario_runs)
-    out_dir = root / ".crashtest" / "runs" / run_id
+    out_dir = root / ".punchliner" / "runs" / run_id
     out_dir.mkdir(parents=True, exist_ok=True)
     out_file = out_dir / "results.json"
     out_file.write_text(results.model_dump_json(indent=2, exclude_none=True) + "\n", encoding="utf-8")

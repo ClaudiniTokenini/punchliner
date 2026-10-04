@@ -9,7 +9,7 @@ import { viteSingleFile } from "vite-plugin-singlefile";
 import { isSafeRunId, summarizeRun } from "./src/lib/runs";
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
-const runsDir = path.resolve(rootDir, "../.crashtest/runs");
+const runsDir = path.resolve(rootDir, "../.punchliner/runs");
 
 function listRuns() {
   if (!existsSync(runsDir)) return [];
@@ -77,7 +77,7 @@ export default defineConfig({
         if (!existsSync(artifact)) return [];
         // Escape markup so attacker-controlled trace content stays inert JSON.
         const data = JSON.stringify(JSON.parse(readFileSync(artifact, "utf8"))).replaceAll("<", "\\u003c");
-        return [{ tag: "script", attrs: { id: "crashtest-results", type: "application/json" }, children: data, injectTo: "head-prepend" }];
+        return [{ tag: "script", attrs: { id: "punchliner-results", type: "application/json" }, children: data, injectTo: "head-prepend" }];
       },
     },
     viteSingleFile(),

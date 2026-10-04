@@ -8,8 +8,8 @@ from typing import Any
 
 import httpx
 from dotenv import load_dotenv
-from crashtest.prompts import load_prompt
-from crashtest.schemas import JevAnswers, JevVerdict, Scenario
+from punchliner.prompts import load_prompt
+from punchliner.schemas import JevAnswers, JevVerdict, Scenario
 
 DEFAULT_BASE_URL = "https://api.typesafe.ai/v1"
 CRITERIA = {

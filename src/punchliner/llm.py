@@ -10,7 +10,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from crashtest.prompts import load_prompt
+from punchliner.prompts import load_prompt
 
 try:
     load_dotenv(Path.cwd() / ".env")

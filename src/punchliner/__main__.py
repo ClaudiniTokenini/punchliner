@@ -1,4 +1,4 @@
-from crashtest.cli import app
+from punchliner.cli import app
 
 if __name__ == "__main__":
     app()

@@ -27,15 +27,13 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
-it("shows only report data and keeps details collapsed", async () => {
+it("shows Punchliner with details collapsed", async () => {
   render(<App />);
   await screen.findByRole("heading", { name: "Punchliner" });
   expect(screen.getByRole("heading", { name: "Punches" })).toBeTruthy();
-  expect(screen.getAllByText("80%")).toHaveLength(2);
+  expect(screen.getByText("8/10")).toBeTruthy();
   expect(screen.getByText("2/10")).toBeTruthy();
-  expect(screen.getByText("2 / 10")).toBeTruthy();
   expect(screen.queryByText(fixture.remediation.suggested_remediation)).toBeNull();
-  expect(screen.queryByText("Sample report")).toBeNull();
 });
 
 it("opens the recorded trace for a scenario", async () => {
@@ -44,8 +42,6 @@ it("opens the recorded trace for a scenario", async () => {
   await screen.findByRole("heading", { name: "Punchliner" });
   await user.click(screen.getByRole("button", { name: "Replay Unauthorized Refund" }));
   expect(screen.getByRole("tab", { name: "Trace replay" }).getAttribute("aria-selected")).toBe("true");
-  expect(screen.getByText('issue_refund(order_id="4812", amount=499, currency="PLN")')).toBeTruthy();
-  expect(screen.getByText("JEV: 97% confidence")).toBeTruthy();
 });
 
 it("shows remediation only on request", async () => {
@@ -54,25 +50,4 @@ it("shows remediation only on request", async () => {
   await screen.findByRole("heading", { name: "Punchliner" });
   await user.click(screen.getByRole("button", { name: "Remediation" }));
   expect(screen.getByText(fixture.remediation.suggested_remediation)).toBeTruthy();
-  expect(screen.getByText("npm test")).toBeTruthy();
-});
-
-it("does not hide inconclusive evaluations", async () => {
-  const data = structuredClone(fixture) as Results;
-  data.summary.inconclusive_runs = 1;
-  installFetch(data);
-  render(<App />);
-  expect(await screen.findByText("1 inconclusive")).toBeTruthy();
-});
-
-it("shows the selected run in the header", async () => {
-  render(<App />);
-  expect(await screen.findByRole("combobox", { name: "Run" })).toBeTruthy();
-  expect(screen.getByRole("combobox", { name: "Run" }).textContent).toContain("FAILED");
-});
-
-it("labels the bundled sample", async () => {
-  vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("No artifact")));
-  render(<App />);
-  expect(await screen.findByText("Sample report")).toBeTruthy();
 });

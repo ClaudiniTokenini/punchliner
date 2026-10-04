@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DashBar } from "@/components/terminal";
-import { pct } from "@/lib/report";
 import type { Scenario } from "@/types";
 
 const severityClass: Record<string, string> = { critical: "text-destructive", high: "text-foreground" };
@@ -67,7 +66,7 @@ export function Scenarios({ scenarios, searchable = false, onReplay }: {
                   </button>
                 </TableCell>
                 <TableCell className={`text-[0.625rem] font-bold tracking-widest uppercase ${severityClass[scenario.severity] ?? "text-muted-foreground"}`}>{scenario.severity}</TableCell>
-                <TableCell className="text-sm font-bold">{pct(scenario.total_runs ? scenario.defended / scenario.total_runs : 0)}</TableCell>
+                <TableCell className="text-sm font-bold">{scenario.defended} / {scenario.total_runs}</TableCell>
                 <TableCell className={`text-sm ${scenario.compromised ? "font-bold text-destructive" : "text-muted-foreground"}`}>{scenario.compromised} / {scenario.total_runs}</TableCell>
                 <TableCell className="text-right"><Button variant="outline" size="xs" onClick={() => onReplay(scenario.id)} aria-label={`Replay ${scenario.name}`}><ArrowUpRight />Replay</Button></TableCell>
               </TableRow>

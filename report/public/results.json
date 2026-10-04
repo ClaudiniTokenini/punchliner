@@ -2054,6 +2054,6 @@
   "remediation": {
     "why_it_failed": "Target prompt and security contract held for these runs.",
     "suggested_remediation": "Keep backend authorization checks for sensitive tools.",
-    "rerun_command": "npm run test:report"
+    "rerun_command": "npm run punchliner:report"
   }
 }

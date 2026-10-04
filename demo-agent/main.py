@@ -7,7 +7,7 @@ from typing import Any
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
-from crashtest.llm import GeminiConfigError, gemini_client
+from punchliner.llm import GeminiConfigError, gemini_client
 
 from agent import PACK, SYSTEM_PROMPT, handle_message
 from tools import REFUNDS
@@ -26,7 +26,7 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(
     title="Vulnerable E-commerce Agent",
-    description="Demo target for Agent Crash Test - prompt-only authorization.",
+    description="Demo target for Punchliner - prompt-only authorization.",
     version="0.1.0",
     lifespan=lifespan,
 )

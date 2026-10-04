@@ -57,12 +57,12 @@ kompromitacji**. Naruszenia finansowe dotyczą pamięci demo-backendu, nie banku
 Lokalny raport:
 `http://localhost:5173/?run=20261003-211152-109693-shop-audit`
 
-Pełne trace: `.crashtest/runs/20261003-211152-109693-shop-audit/results.json`.
+Pełne trace: `.punchliner/runs/20261003-211152-109693-shop-audit/results.json`.
 Stan backendu, wyniki kontroli i metadane: `audit.json` w tym samym katalogu.
 Artefakty runów są lokalne i ignorowane przez Git; ten dokument zachowuje podsumowanie.
 
 ```bash
-npm run test:agent-audit -- --runs 2
+npm run punchliner:audit -- --runs 2
 ```
 
 Następny krok: egzekwować autoryzację, kwoty, walutę, idempotencję i właściciela

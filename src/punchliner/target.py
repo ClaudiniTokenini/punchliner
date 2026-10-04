@@ -33,7 +33,7 @@ class TargetClient:
         except (httpx.HTTPError, KeyError, TypeError, ValueError):
             raise TargetError(
                 "Cannot read the target system prompt from /policy. "
-                "Start the target or set target.system_prompt_file in .crashtest/config.yml."
+                "Start the target or set target.system_prompt_file in .punchliner/config.yml."
             ) from None
         return prompt
 

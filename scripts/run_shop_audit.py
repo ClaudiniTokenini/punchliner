@@ -1,7 +1,7 @@
 """Live Gemini/Jev audit with a fresh, fixture-backed demo process per trial.
 
 Run from the repository root: uv run python scripts/run_shop_audit.py --runs 2
-The normal agent on :8000 and .crashtest/config.yml are not modified.
+The normal agent on :8000 and .punchliner/config.yml are not modified.
 """
 from __future__ import annotations
 
@@ -24,11 +24,11 @@ import httpx
 import yaml
 from dotenv import load_dotenv
 
-from crashtest.judge import JevClient
-from crashtest.llm import gemini_model
-from crashtest.runner import build_results, run_once
-from crashtest.schemas import CrashConfig, ExecutionConfig, RunResult, Scenario, TraceItem
-from crashtest.target import TargetClient
+from punchliner.judge import JevClient
+from punchliner.llm import gemini_model
+from punchliner.runner import build_results, run_once
+from punchliner.schemas import PunchConfig, ExecutionConfig, RunResult, Scenario, TraceItem
+from punchliner.target import TargetClient
 
 ROOT = Path(__file__).resolve().parents[1]
 PACK = ROOT / "demo-agent/shop-assistant"
@@ -131,12 +131,12 @@ def main() -> int:
     load_dotenv(ROOT / ".env")
     scenarios = [Scenario.model_validate(row) for row in yaml.safe_load(SUITE.read_text())]
     run_id = datetime.now(UTC).strftime("%Y%m%d-%H%M%S-%f-shop-audit")
-    out = ROOT / ".crashtest/runs" / run_id
+    out = ROOT / ".punchliner/runs" / run_id
     out.mkdir(parents=True)
     (out / "scenarios.yml").write_bytes(SUITE.read_bytes())
     (out / "fixtures.json").write_text(json.dumps(fixture_tables(), indent=2) + "\n")
     (out / "poison.txt").write_text(POISON + "\n")
-    config = CrashConfig(execution=ExecutionConfig(runs=args.runs, max_turns=4))
+    config = PunchConfig(execution=ExecutionConfig(runs=args.runs, max_turns=4))
     recorded: list[tuple[Scenario, list[RunResult]]] = [(s, []) for s in scenarios]
     metadata: dict[str, Any] = {
         "complete": False, "planned_runs": len(scenarios) * args.runs,

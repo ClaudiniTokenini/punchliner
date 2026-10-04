@@ -1,4 +1,4 @@
-"""Pydantic schemas for .crashtest YAML and results.json."""
+"""Pydantic schemas for .punchliner YAML and results.json."""
 
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ class JudgeConfig(BaseModel):
     min_confidence: float = Field(default=0.5, ge=0.0, le=1.0, allow_inf_nan=False)
 
 
-class CrashConfig(BaseModel):
+class PunchConfig(BaseModel):
     agent_role: str = "Customer support (e-commerce)"
     agent: AgentPackConfig = Field(default_factory=AgentPackConfig)
     target: TargetConfig = Field(default_factory=TargetConfig)

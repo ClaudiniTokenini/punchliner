@@ -1,19 +1,17 @@
 {
-  "name": "agent-crash-test",
+  "name": "punchliner",
   "private": true,
   "scripts": {
     "agent": "uv run python scripts/run_agent.py demo-agent/shop-assistant",
     "agent:shop": "uv run python scripts/run_agent.py demo-agent/shop-assistant",
     "agent:hr": "uv run python scripts/run_agent.py demo-agent/hr-assistant",
     "agent:devops": "uv run python scripts/run_agent.py demo-agent/devops-copilot",
-    "chat": "uv run crashtest chat",
-    "configure": "uv run crashtest configure",
-    "init": "uv run crashtest init",
-    "test": "uv run crashtest run",
-    "test:report": "uv run crashtest run --raport",
-    "test:report:ci": "uv run crashtest run --raport --no-browser",
-    "test:agent-audit": "uv run python scripts/run_shop_audit.py",
-    "open": "uv run crashtest open",
-    "report": "npm --prefix report run dev"
+    "punchliner:init": "uv run punchliner init",
+    "punchliner:punch": "uv run punchliner run",
+    "punchliner:report": "uv run punchliner run --raport",
+    "punchliner:ci": "uv run punchliner run --raport --no-browser",
+    "punchliner:audit": "uv run python scripts/run_shop_audit.py",
+    "punchliner:open": "uv run punchliner open",
+    "punchliner:chat": "uv run punchliner chat"
   }
 }

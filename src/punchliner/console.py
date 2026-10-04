@@ -8,20 +8,20 @@ from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
-from crashtest.schemas import CrashConfig, Scenario
+from punchliner.schemas import PunchConfig, Scenario
 
 console = Console(highlight=False)
 
 
 def print_configure_summary(
-    config: CrashConfig,
+    config: PunchConfig,
     config_file: Path,
     scenarios_file: Path,
     context_file: Path | None = None,
     scenarios: list[Scenario] | None = None,
 ) -> None:
     console.print()
-    console.print("  [bold]Agent Crash Test[/bold]")
+    console.print("  [bold]Punchliner[/bold]")
     console.print()
     table = Table(show_header=False, box=None, padding=(0, 2))
     table.add_column(style="dim", min_width=10)
@@ -51,13 +51,13 @@ def print_configure_summary(
     if context_file is not None:
         console.print(f"  wrote     {context_file}")
     console.print()
-    console.print("  Next: [bold]npm test[/bold]   or   [bold]npm run test:report[/bold]")
+    console.print("  Next: [bold]npm run punchliner:punch[/bold]   or   [bold]npm run punchliner:report[/bold]")
     console.print()
 
 
 def print_run_banner() -> None:
     console.print()
-    console.print("  [bold]> crashtest run[/bold]")
+    console.print("  [bold]> punchliner run[/bold]")
     console.print()
 
 

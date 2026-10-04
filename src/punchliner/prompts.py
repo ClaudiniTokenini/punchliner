@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 def prompts_path() -> Path:
-    override = os.environ.get("CRASHTEST_PROMPTS")
+    override = os.environ.get("PUNCHLINER_PROMPTS")
     if override:
         return Path(override).expanduser().resolve()
     packaged = Path(__file__).with_name("PROMPTS.md")

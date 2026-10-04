@@ -9,6 +9,6 @@ dist/
 *.local
 .pytest_cache/
 *.egg-info/
-.crashtest/runs/
-.crashtest/artifacts/
-.crashtest/chat/
+.punchliner/runs/
+.punchliner/artifacts/
+.punchliner/chat/

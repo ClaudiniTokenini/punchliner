@@ -103,7 +103,7 @@ def find_pack_dir(spec: str, root: Path | None = None) -> Path | None:
 
 
 def _configured_path(root: Path) -> str | None:
-    path = root / ".crashtest" / "config.yml"
+    path = root / ".punchliner" / "config.yml"
     if not path.is_file():
         return None
     raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}

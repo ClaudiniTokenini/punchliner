@@ -58,7 +58,7 @@ export async function fetchRun(id: string): Promise<Results> {
 }
 
 export async function loadResults(requested: string | null = null): Promise<LoadedReport> {
-  const embedded = document.getElementById("crashtest-results")?.textContent;
+  const embedded = document.getElementById("punchliner-results")?.textContent;
   if (window.location.protocol === "file:" && embedded) {
     return { data: JSON.parse(embedded) as Results, source: "results.json", runs: [], runId: null };
   }
@@ -77,7 +77,7 @@ export function downloadReport(data: Results) {
   const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
   const link = document.createElement("a");
   link.href = url;
-  link.download = "crashtest-results.json";
+  link.download = "punchliner-results.json";
   link.click();
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
