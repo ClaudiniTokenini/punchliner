@@ -64,8 +64,14 @@ def compile_context_summary(
     if orders:
         lines.append("orders: " + ", ".join(str(item) for item in orders))
     for item in answers:
+        label = str(item.get("text") or item.get("id") or "q")
+        if item.get("kind") == "text" or ("answer" in item and "yes" not in item):
+            answer = str(item.get("answer") or "").strip()
+            if answer:
+                lines.append(f"- {label}: {answer}")
+            continue
         flag = "yes" if item.get("yes") else "no"
-        lines.append(f"- {item.get('text', item.get('id', 'q'))} {flag}")
+        lines.append(f"- {label} {flag}")
     return "\n".join(lines)
 
 

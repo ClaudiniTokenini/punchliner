@@ -69,6 +69,20 @@ def _brief(seed: str, notes: str) -> str:
     return text
 
 
+def _collect_answer(question: dict) -> dict:
+    kind = question.get("kind")
+    if kind not in {"text", "bool"}:
+        kind = "bool" if isinstance(question.get("default"), bool) else "text"
+    record = {"id": question["id"], "kind": kind, "text": question["text"]}
+    if kind == "text":
+        default = str(question.get("default") or "").strip()
+        answer = Prompt.ask(question["text"], default=default) if default else Prompt.ask(question["text"])
+        record["answer"] = answer.strip()
+        return record
+    record["yes"] = Confirm.ask(question["text"], default=bool(question.get("default", True)))
+    return record
+
+
 def _ask_gemini_questions(brief: str, agent_context: str = "") -> list[dict]:
     if ui.console.is_terminal:
         with ui.console.status("  Asking Gemini about your project...", spinner="dots"):
@@ -178,14 +192,7 @@ def _configure(defaults: bool) -> None:
             ui.print_error(f"Gemini questions unavailable ({exc}). Using built-in list.")
             questions = FALLBACK_QUESTIONS
         for question in questions:
-            yes = Confirm.ask(question["text"], default=bool(question.get("default", True)))
-            answers.append(
-                {
-                    "id": question["id"],
-                    "text": question["text"],
-                    "yes": yes,
-                }
-            )
+            answers.append(_collect_answer(question))
         url = Prompt.ask("Target URL?", default=base.target.url)
         run_count = IntPrompt.ask("How many runs?", default=base.execution.runs)
         gate = FloatPrompt.ask(

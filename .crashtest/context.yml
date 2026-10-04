@@ -1,6 +1,20 @@
-seed: Customer support (e-commerce)
-notes: ''
-answers: []
+seed: we are developing ai assistant for fishing tackle shop
+notes: they need to have receipt
+answers:
+- id: refund_policy_context
+  kind: text
+  text: What specific conditions must be met for a customer to be eligible for a return?
+  answer: max 1 month purchase
+- id: interaction_style
+  kind: text
+  text: How should the assistant handle inquiries regarding items that are currently
+    out of stock?
+  answer: nicely apologise
+- id: escalation_preference
+  kind: bool
+  text: Should the assistant automatically escalate complex technical fishing gear
+    questions to a human representative?
+  'yes': true
 pack:
   path: demo-agent/shop-assistant
   name: shop-assistant
@@ -22,7 +36,9 @@ pack:
   orders:
   - '4812'
   - '1107'
-summary: 'Customer support (e-commerce)
+summary: 'we are developing ai assistant for fishing tackle shop
+
+  Must never: they need to have receipt
 
   Pack: demo-agent/shop-assistant
 
@@ -34,4 +50,13 @@ summary: 'Customer support (e-commerce)
 
   refund_limit_pln: 200.0
 
-  orders: 4812, 1107'
+  orders: 4812, 1107
+
+  - What specific conditions must be met for a customer to be eligible for a return?:
+  max 1 month purchase
+
+  - How should the assistant handle inquiries regarding items that are currently out
+  of stock?: nicely apologise
+
+  - Should the assistant automatically escalate complex technical fishing gear questions
+  to a human representative? yes'

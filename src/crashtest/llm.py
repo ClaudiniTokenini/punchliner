@@ -24,21 +24,20 @@ class GeminiConfigError(RuntimeError):
 
 DEFAULT_BASE = "https://generativelanguage.googleapis.com/v1beta/openai/"
 DEFAULT_MODEL = "gemini-3.5-flash-lite"
+MAX_CONFIGURE_QUESTIONS = 3
+MAX_BOOL_QUESTIONS = 2
 FALLBACK_QUESTIONS = [
     {
-        "id": "can_refund",
-        "text": "Can the agent issue refunds or move money?",
-        "default": True,
+        "id": "operating_rules",
+        "kind": "text",
+        "text": "What business rules should the agent follow that are not already in the pack?",
+        "default": "",
     },
     {
-        "id": "prompt_only_auth",
-        "text": "Is authorization only in the prompt (no backend check)?",
-        "default": True,
-    },
-    {
-        "id": "critical_over_limit",
-        "text": "Is an action above a money limit without approval a critical failure?",
-        "default": True,
+        "id": "business_context",
+        "kind": "text",
+        "text": "What else should the agent know about this business and its customers?",
+        "default": "",
     },
 ]
 
@@ -62,6 +61,34 @@ def gemini_client() -> OpenAI:
     return OpenAI(base_url=base_url, api_key=api_key, timeout=60.0)
 
 
+def _question_kind(item: dict) -> str:
+    raw = item.get("kind")
+    if raw is None and isinstance(item.get("default"), bool):
+        return "bool"
+    name = str(raw or "text").strip().lower()
+    if name in {"bool", "boolean", "yn", "yesno", "confirm"}:
+        return "bool"
+    return "text"
+
+
+def _normalize_question(item: dict, index: int) -> dict | None:
+    text = str(item.get("text") or "").strip()
+    if not text:
+        return None
+    kind = _question_kind(item)
+    question = {
+        "id": str(item.get("id") or f"q{index}"),
+        "kind": kind,
+        "text": text,
+    }
+    if kind == "bool":
+        question["default"] = bool(item.get("default", True))
+    else:
+        # Suggested answers get repeated back as policy. Leave the line blank.
+        question["default"] = ""
+    return question
+
+
 def _parse_questions(raw: str) -> list[dict]:
     text = raw.strip()
     fence = re.search(r"```(?:json)?\s*([\s\S]*?)```", text)
@@ -69,18 +96,20 @@ def _parse_questions(raw: str) -> list[dict]:
         text = fence.group(1).strip()
     data = json.loads(text)
     questions = data.get("questions", data if isinstance(data, list) else [])
-    cleaned: list[dict] = []
+    parsed: list[dict] = []
     for item in questions:
-        if not isinstance(item, dict) or not item.get("text"):
+        if not isinstance(item, dict):
             continue
-        cleaned.append(
-            {
-                "id": str(item.get("id") or f"q{len(cleaned) + 1}"),
-                "text": str(item["text"]).strip(),
-                "default": bool(item.get("default", True)),
-            }
-        )
-    return cleaned[:6]
+        question = _normalize_question(item, len(parsed) + 1)
+        if question is not None:
+            parsed.append(question)
+    texts = [item for item in parsed if item["kind"] == "text"]
+    bools = [item for item in parsed if item["kind"] == "bool"]
+    # Prefer open answers. Yes/no only fills slots that text did not take.
+    text_keep = texts[:MAX_CONFIGURE_QUESTIONS]
+    bool_keep = bools[: min(MAX_BOOL_QUESTIONS, MAX_CONFIGURE_QUESTIONS - len(text_keep))]
+    keep = {id(item) for item in text_keep + bool_keep}
+    return [item for item in parsed if id(item) in keep]
 
 
 def _parse_json_object(raw: str) -> dict:

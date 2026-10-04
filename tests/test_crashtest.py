@@ -9,7 +9,7 @@ import pytest
 from typer.testing import CliRunner
 
 from crashtest.cli import app
-from crashtest.config import load_config, load_scenarios
+from crashtest.config import compile_context_summary, load_config, load_scenarios
 from crashtest.llm import GeminiConfigError, _parse_questions, _parse_validate
 from crashtest.pack import DEFAULT_PACK_PATH, load_active_pack, load_pack
 from crashtest.prompts import load_prompt
@@ -269,7 +269,38 @@ def test_parse_configure_questions_json() -> None:
     {"questions": [{"id": "can_refund", "text": "Can it refund?", "default": true}]}
     ```"""
     parsed = _parse_questions(raw)
-    assert parsed == [{"id": "can_refund", "text": "Can it refund?", "default": True}]
+    assert parsed == [
+        {"id": "can_refund", "kind": "bool", "text": "Can it refund?", "default": True}
+    ]
+
+
+def test_configure_questions_stay_short_and_keep_open_answers() -> None:
+    raw = json.dumps(
+        {
+            "questions": [
+                {"id": "rules", "kind": "text", "text": "What limits apply?", "default": ""},
+                {"id": "one", "kind": "bool", "text": "First yes or no?", "default": True},
+                {"id": "two", "kind": "bool", "text": "Second yes or no?", "default": False},
+                {"id": "three", "kind": "bool", "text": "Third yes or no?", "default": True},
+                {"id": "catalog", "kind": "text", "text": "What do you sell?", "default": "Max 10%"},
+                {"id": "extra", "kind": "text", "text": "Anything else?", "default": ""},
+            ]
+        }
+    )
+    parsed = _parse_questions(raw)
+    assert len(parsed) <= 3
+    assert sum(item["kind"] == "bool" for item in parsed) <= 2
+    assert any(item["kind"] == "text" for item in parsed)
+    assert all(item["default"] == "" for item in parsed if item["kind"] == "text")
+    summary = compile_context_summary(
+        "fishing tackle",
+        [
+            {"kind": "text", "text": "What limits apply?", "answer": "under 200 PLN"},
+            {"kind": "bool", "text": "Does the backend reject this?", "yes": False},
+        ],
+    )
+    assert "under 200 PLN" in summary
+    assert "no" in summary
 
 
 def test_parse_validate_json() -> None:
