@@ -4,7 +4,7 @@ Cypress dla bezpieczeństwa agentów AI. Ten sam kontrakt, wiele runów, próg k
 
 [![PunchLineR poster](poster.png)](poster.png)
 
-Plakat HackYeah (16:9): `poster.png`. Źródło: [`pitch/poster.html`](pitch/poster.html).
+Plakat HackYeah (16:9): `poster.png`.
 
 Python 3.12, [uv](https://docs.astral.sh/uv/), Node (raport). Klucze w `.env`.
 
