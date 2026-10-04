@@ -2,6 +2,10 @@
 
 Cypress dla bezpieczeństwa agentów AI. Ten sam kontrakt, wiele runów, próg kompromitacji. Target i generator scenariuszy: **Google Gemini**. Sędzia trace: **Jev (TypeSafe)**.
 
+[![PunchLineR poster](poster.png)](poster.png)
+
+Plakat HackYeah (16:9): `poster.png`. Źródło: [`pitch/poster.html`](pitch/poster.html).
+
 Python 3.12, [uv](https://docs.astral.sh/uv/), Node (raport). Klucze w `.env`.
 
 ```bash
